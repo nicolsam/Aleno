@@ -51,14 +51,14 @@ export default function DashboardPage() {
   }, [schoolId])
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>
+    return <div className="text-gray-700">Loading...</div>
   }
 
   if (!stats || stats.totalStudents === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
-        <div className="bg-white p-8 rounded-lg shadow text-center text-gray-500">
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
+        <div className="bg-white p-8 rounded-lg shadow text-center text-gray-700">
           No students yet. Add students to see statistics.
         </div>
       </div>
@@ -67,28 +67,28 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Total Students</h3>
+          <h3 className="text-gray-600 text-sm">Total Students</h3>
           <p className="text-3xl font-bold text-gray-800">{stats.totalStudents}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Average Level</h3>
+          <h3 className="text-gray-600 text-sm">Average Level</h3>
           <p className="text-3xl font-bold text-gray-800">
             {stats.distribution.reduce((acc, d) => acc + d.count * (8 - stats.distribution.indexOf(d)), 0) / stats.totalStudents || 0}
           </p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-500 text-sm">Need Attention</h3>
+          <h3 className="text-gray-600 text-sm">Need Attention</h3>
           <p className="text-3xl font-bold text-red-600">{stats.needAttention.length}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Distribution by Level</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribution by Level</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie

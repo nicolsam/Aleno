@@ -56,7 +56,7 @@ export default function SchoolsPage() {
   }
 
   if (loading) {
-    return <div className="text-gray-500">Loading...</div>
+    return <div className="text-gray-700">Loading...</div>
   }
 
   return (
@@ -73,14 +73,14 @@ export default function SchoolsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {schools.length === 0 ? (
-          <div className="bg-white p-6 rounded-lg shadow text-center text-gray-500 col-span-full">
+          <div className="bg-white p-6 rounded-lg shadow text-center text-gray-700 col-span-full">
             No schools yet. Add your first school.
           </div>
         ) : (
           schools.map((school) => (
             <div key={school.id} className="bg-white p-6 rounded-lg shadow">
-              <h3 className="text-lg font-semibold">{school.name}</h3>
-              <p className="text-gray-500 text-sm">{school.address || 'No address'}</p>
+              <h3 className="text-lg font-semibold text-gray-800">{school.name}</h3>
+              <p className="text-gray-600 text-sm">{school.address || 'No address'}</p>
             </div>
           ))
         )}
