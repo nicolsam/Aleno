@@ -30,7 +30,7 @@ export default function StudentsPage() {
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
   const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '' })
-  const [updateLevel, setUpdateLevel] = useState({ studentId: '', levelId: '', notes: '' })
+  const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '' })
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -95,7 +95,9 @@ export default function StudentsPage() {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    if (!updateLevel.levelId) {
+    console.log('Sending update:', updateLevel) // Debug log
+
+    if (!updateLevel.readingLevelId) {
       setError('Please select a reading level')
       return
     }
@@ -106,10 +108,13 @@ export default function StudentsPage() {
       body: JSON.stringify(updateLevel),
     })
 
+    console.log('Response status:', res.status) // Debug log
+
     if (res.ok) {
       window.location.reload()
     } else {
       const data = await res.json()
+      console.log('Error response:', data) // Debug log
       setError(data.error || 'Failed to update reading level')
     }
   }
@@ -184,7 +189,7 @@ export default function StudentsPage() {
                   <td className="p-4">
                     <button
                       onClick={() => {
-                        setUpdateLevel({ studentId: student.id, levelId: '', notes: '' })
+                        setUpdateLevel({ studentId: student.id, readingLevelId: '', notes: '' })
                       }}
                       className="text-blue-600 hover:underline text-sm"
                     >
@@ -245,8 +250,8 @@ export default function StudentsPage() {
             <h2 className="text-xl font-bold mb-4">Update Reading Level</h2>
             <form onSubmit={handleUpdateLevel} className="space-y-4">
               <select
-                value={updateLevel.levelId}
-                onChange={(e) => setUpdateLevel({ ...updateLevel, levelId: e.target.value })}
+                value={updateLevel.readingLevelId}
+                onChange={(e) => setUpdateLevel({ ...updateLevel, readingLevelId: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded"
                 required
               >
@@ -273,7 +278,7 @@ export default function StudentsPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setUpdateLevel({ studentId: '', levelId: '', notes: '' })}
+                  onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '' })}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded"
                 >
                   Cancel

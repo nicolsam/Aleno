@@ -17,8 +17,13 @@ export async function PATCH(request: Request) {
     const body = await request.json()
     const { studentId, readingLevelId, notes } = body
 
+    console.log('[API] Received update request:', { studentId, readingLevelId, notes }) // Debug
+
     if (!studentId || !readingLevelId) {
-      return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+      return NextResponse.json({ 
+        error: 'Missing fields',
+        details: { studentId: !!studentId, readingLevelId: !!readingLevelId }
+      }, { status: 400 })
     }
 
     const history = await prisma.studentReadingHistory.create({
