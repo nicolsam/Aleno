@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model School {
+  id        String   @id @default(uuid())
+  name      String
+  address   String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  teachers  TeacherSchool[]
+  students  Student[]
+
+  @@map("schools")
+}
+
+model Teacher {
+  id        String   @id @default(uuid())
+  name     String
+  email    String   @unique
+  password String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  schools              TeacherSchool[]
+  readingRecords      StudentReadingHistory[]
+
+  @@map("teachers")
+}
+
+model TeacherSchool {
+  teacherId String @map("teacher_id")
+  schoolId String @map("school_id")
+  role     String @default("teacher")
+
+  teacher Teacher @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  school  School  @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+
+  @@id([teacherId, schoolId])
+  @@map("teacher_schools")
+}
+
+model Student {
+  id            String   @id @default(uuid())
+  name          String
+  studentNumber String   @map("student_number")
+  schoolId      String   @map("school_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  school           School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  readingHistory   StudentReadingHistory[]
+
+  @@unique([studentNumber, schoolId])
+  @@map("students")
+}
+
+model ReadingLevel {
+  id          String @id @default(uuid())
+  name        String
+  code        String @unique
+  order       Int
+  description String?
+
+  history StudentReadingHistory[]
+
+  @@map("reading_levels")
+}
+
+model StudentReadingHistory {
+  id              String   @id @default(uuid())
+  studentId       String   @map("student_id")
+  readingLevelId  String   @map("reading_level_id")
+  teacherId       String  @map("teacher_id")
+  recordedAt      DateTime @default(now()) @map("recorded_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+  notes           String?
+
+  student      Student      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  readingLevel ReadingLevel @relation(fields: [readingLevelId], references: [id])
+  teacher      Teacher      @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("student_reading_history")
+}
