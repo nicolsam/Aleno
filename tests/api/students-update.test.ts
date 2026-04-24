@@ -1,0 +1,165 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+
+// Use vi.hoisted to define mocks at the right time
+const { mockCreateHistory, mockVerifyToken } = vi.hoisted(() => ({
+  mockCreateHistory: vi.fn(),
+  mockVerifyToken: vi.fn(),
+}))
+
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    studentReadingHistory: { create: mockCreateHistory },
+    teacher: { findUnique: vi.fn() },
+    school: { findMany: vi.fn() },
+    teacherSchool: { findMany: vi.fn() },
+    student: { findMany: vi.fn() },
+    readingLevel: { findMany: vi.fn() },
+  },
+}))
+
+vi.mock('@/lib/auth', () => ({
+  verifyToken: mockVerifyToken,
+}))
+
+import { PATCH as UpdateReadingLevel } from '@/app/api/students/update/route'
+
+describe('API: /api/students/update PATCH', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockVerifyToken.mockImplementation((token: string) => {
+      if (token && token.startsWith('valid-')) {
+        return { id: 'teacher-123', email: 'teacher@test.com' }
+      }
+      return null
+    })
+  })
+
+  // Test 1: No token
+  it('should return 401 when no token provided', async () => {
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ studentId: 's1', readingLevelId: 'l1' }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(401)
+    const data = await response.json()
+    expect(data.error).toBe('Unauthorized')
+  })
+
+  // Test 2: Invalid token
+  it('should return 401 for invalid token', async () => {
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 
+        authorization: 'Bearer bad-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ studentId: 's1', readingLevelId: 'l1' }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(401)
+  })
+
+  // Test 3: Missing studentId
+  it('should return 400 when studentId is missing', async () => {
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ readingLevelId: 'level-1' }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.error).toBe('Missing fields')
+  })
+
+  // Test 4: Missing readingLevelId  
+  it('should return 400 when readingLevelId is missing', async () => {
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ studentId: 'student-1' }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(400)
+  })
+
+  // Test 5: Empty readingLevelId (the bug case!)
+  it('should return 400 when readingLevelId is empty string', async () => {
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ studentId: 'student-1', readingLevelId: '' }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.error).toBe('Missing fields')
+  })
+
+  // Test 6: Success case
+  it('should return 200 with valid data', async () => {
+    mockCreateHistory.mockResolvedValue({ 
+      id: 'history-1', 
+      studentId: 'student-123', 
+      readingLevelId: 'level-123',
+      teacherId: 'teacher-123',
+      notes: 'Good progress'
+    })
+
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        studentId: 'student-123', 
+        readingLevelId: 'level-123',
+        notes: 'Good progress'
+      }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(200)
+    
+    const data = await response.json()
+    expect(data.history).toBeDefined()
+    expect(data.history.id).toBe('history-1')
+  })
+
+  // Test 7: DB failure
+  it('should return 500 when database fails', async () => {
+    mockCreateHistory.mockRejectedValue(new Error('DB connection failed'))
+
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: { 
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        studentId: 'student-123', 
+        readingLevelId: 'level-123' 
+      }),
+    }) as any
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(500)
+  })
+})
