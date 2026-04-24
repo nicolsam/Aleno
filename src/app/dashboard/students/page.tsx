@@ -28,6 +28,7 @@ export default function StudentsPage() {
   const [schoolId, setSchoolId] = useState('')
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
+  const [error, setError] = useState('')
   const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '' })
   const [updateLevel, setUpdateLevel] = useState({ studentId: '', levelId: '', notes: '' })
 
@@ -67,7 +68,10 @@ export default function StudentsPage() {
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('token')
-    if (!token || !schoolId) return
+    if (!token || !schoolId) {
+      setError('Please select a school first')
+      return
+    }
 
     const res = await fetch('/api/students', {
       method: 'POST',
@@ -80,6 +84,9 @@ export default function StudentsPage() {
       setStudents([...students, data.student])
       setShowModal(false)
       setNewStudent({ name: '', studentNumber: '' })
+    } else {
+      const data = await res.json()
+      setError(data.error || 'Failed to create student')
     }
   }
 
@@ -87,6 +94,11 @@ export default function StudentsPage() {
     e.preventDefault()
     const token = localStorage.getItem('token')
     if (!token) return
+
+    if (!updateLevel.levelId) {
+      setError('Please select a reading level')
+      return
+    }
 
     const res = await fetch('/api/students/update', {
       method: 'PATCH',
@@ -96,6 +108,9 @@ export default function StudentsPage() {
 
     if (res.ok) {
       window.location.reload()
+    } else {
+      const data = await res.json()
+      setError(data.error || 'Failed to update reading level')
     }
   }
 
@@ -120,7 +135,7 @@ export default function StudentsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Students</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Students</h1>
         <button
           onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
@@ -128,6 +143,10 @@ export default function StudentsPage() {
           Add Student
         </button>
       </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
+      )}
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
@@ -142,7 +161,7 @@ export default function StudentsPage() {
           <tbody>
             {students.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-gray-500">
+                <td colSpan={4} className="p-4 text-center text-gray-700">
                   No students yet. Add your first student.
                 </td>
               </tr>
