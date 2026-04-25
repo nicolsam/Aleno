@@ -22,6 +22,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [])
 
   useEffect(() => {
+    if (!mounted) return
+
     const storedTeacher = localStorage.getItem('teacher')
     const token = localStorage.getItem('token')
     if (!storedTeacher || !token) {
@@ -29,9 +31,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return
     }
     setTeacher(JSON.parse(storedTeacher))
-  }, [router])
+  }, [router, mounted])
 
   useEffect(() => {
+    if (!mounted) return
+
     const fetchSchools = async () => {
       const token = localStorage.getItem('token')
       if (!token) return
@@ -48,7 +52,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       }
     }
     fetchSchools()
-  }, [])
+  }, [mounted])
 
   useEffect(() => {
     if (selectedSchool) {
@@ -63,20 +67,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-700">Loading...</p>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 bg-gray-800 text-white min-h-screen">
         <div className="p-4">
           <h1 className="text-xl font-bold">Aleno</h1>
-          {teacher && <p className="text-sm text-gray-300 mt-1">{teacher.name}</p>}
+          {teacher && mounted && <p className="text-sm text-gray-300 mt-1">{teacher.name}</p>}
         </div>
         <nav className="mt-4">
           <a
@@ -106,24 +102,32 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <main className="flex-1 p-8">
-        {schools.length > 0 && (
-          <div className="mb-6 flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-700">School:</label>
-            <select
-              value={selectedSchool}
-              onChange={(e) => setSelectedSchool(e.target.value)}
-              className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Schools</option>
-              {schools.map((school) => (
-                <option key={school.id} value={school.id}>
-                  {school.name}
-                </option>
-              ))}
-            </select>
+        {!mounted ? (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-700">Loading...</p>
           </div>
+        ) : (
+          <>
+            {schools.length > 0 && (
+              <div className="mb-6 flex items-center gap-4">
+                <label className="text-sm font-medium text-gray-700">School:</label>
+                <select
+                  value={selectedSchool}
+                  onChange={(e) => setSelectedSchool(e.target.value)}
+                  className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Schools</option>
+                  {schools.map((school) => (
+                    <option key={school.id} value={school.id}>
+                      {school.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {children}
+          </>
         )}
-        {children}
       </main>
     </div>
   )
