@@ -4,6 +4,18 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import SchoolsSkeleton from '@/components/skeletons/SchoolsSkeleton'
+import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { Pencil, Trash2 } from "lucide-react"
 
 interface School {
   id: string
@@ -13,10 +25,16 @@ interface School {
 
 export default function SchoolsPage() {
   const router = useRouter()
+  const t = useTranslations('schools')
+  const tCommon = useTranslations('common')
+  const tErrors = useTranslations('errors')
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [newSchool, setNewSchool] = useState({ name: '', address: '' })
+  
+  const [editingSchool, setEditingSchool] = useState<School | null>(null)
+  const [deletingSchoolId, setDeletingSchoolId] = useState<string | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -57,6 +75,64 @@ export default function SchoolsPage() {
     }
   }
 
+  const handleUpdateSchool = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingSchool) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const res = await fetch(`/api/schools/${editingSchool.id}`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editingSchool.name, address: editingSchool.address }),
+    })
+
+    if (res.ok) {
+      const data = await res.json()
+      setSchools(schools.map(s => s.id === data.school.id ? data.school : s))
+      setEditingSchool(null)
+    } else {
+      toast.error(tErrors('failedUpdate'))
+    }
+  }
+
+  const handleDeleteSchool = async () => {
+    if (!deletingSchoolId) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const schoolIdToDelete = deletingSchoolId
+    setDeletingSchoolId(null)
+
+    const res = await fetch(`/api/schools/${schoolIdToDelete}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (res.ok) {
+      const deletedSchool = schools.find(s => s.id === schoolIdToDelete)
+      setSchools(schools.filter(s => s.id !== schoolIdToDelete))
+      
+      toast(tCommon('delete'), {
+        action: {
+          label: tCommon('undo'),
+          onClick: async () => {
+            const restoreRes = await fetch(`/api/schools/${schoolIdToDelete}/restore`, {
+              method: 'PATCH',
+              headers: { Authorization: `Bearer ${token}` }
+            })
+            if (restoreRes.ok) {
+              if (deletedSchool) setSchools(prev => [...prev, deletedSchool])
+            }
+          }
+        },
+        duration: 10000,
+      })
+    } else {
+      toast.error(tErrors('failedDelete'))
+    }
+  }
+
   if (loading) {
     return <SchoolsSkeleton />
   }
@@ -64,25 +140,42 @@ export default function SchoolsPage() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Schools</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <button
           onClick={() => setShowModal(true)}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
-          Add School
+          {t('add')}
         </button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {schools.length === 0 ? (
           <div className="bg-white p-6 rounded-lg shadow text-center text-gray-700 col-span-full">
-            No schools yet. Add your first school.
+            {t('noSchools')}
           </div>
         ) : (
           schools.map((school) => (
-            <div key={school.id} className="bg-white p-6 rounded-lg shadow">
+            <div key={school.id} className="bg-white p-6 rounded-lg shadow relative group">
               <h3 className="text-lg font-semibold text-gray-800">{school.name}</h3>
-              <p className="text-gray-600 text-sm">{school.address || 'No address'}</p>
+              <p className="text-gray-600 text-sm">{school.address || t('noAddress')}</p>
+              
+              <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={() => setEditingSchool(school)}
+                  className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                  title={tCommon('edit')}
+                >
+                  <Pencil size={16} />
+                </button>
+                <button
+                  onClick={() => setDeletingSchoolId(school.id)}
+                  className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full"
+                  title={tCommon('delete')}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
             </div>
           ))
         )}
@@ -91,11 +184,11 @@ export default function SchoolsPage() {
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
           <div className="bg-white p-6 rounded-lg w-96">
-            <h2 className="text-xl font-bold mb-4">Add School</h2>
+            <h2 className="text-xl font-bold mb-4">{t('add')}</h2>
             <form onSubmit={handleCreateSchool} className="space-y-4">
               <input
                 type="text"
-                placeholder="School name"
+                placeholder={t('name')}
                 value={newSchool.name}
                 onChange={(e) => setNewSchool({ ...newSchool, name: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded"
@@ -103,7 +196,7 @@ export default function SchoolsPage() {
               />
               <input
                 type="text"
-                placeholder="Address (optional)"
+                placeholder={t('addressOptional')}
                 value={newSchool.address}
                 onChange={(e) => setNewSchool({ ...newSchool, address: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded"
@@ -113,20 +206,77 @@ export default function SchoolsPage() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
                 >
-                  Add
+                  {tCommon('add')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowModal(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded"
                 >
-                  Cancel
+                  {tCommon('cancel')}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {editingSchool && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
+            <h2 className="text-xl font-bold mb-4">{t('editSchool')}</h2>
+            <form onSubmit={handleUpdateSchool} className="space-y-4">
+              <input
+                type="text"
+                placeholder={t('name')}
+                value={editingSchool.name}
+                onChange={(e) => setEditingSchool({ ...editingSchool, name: e.target.value })}
+                className="w-full p-2 border border-gray-300 rounded"
+                required
+              />
+              <input
+                type="text"
+                placeholder={t('addressOptional')}
+                value={editingSchool.address || ''}
+                onChange={(e) => setEditingSchool({ ...editingSchool, address: e.target.value })}
+                className="w-full p-2 border border-gray-300 rounded"
+              />
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                >
+                  {tCommon('save')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingSchool(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded"
+                >
+                  {tCommon('cancel')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={!!deletingSchoolId} onOpenChange={(open) => !open && setDeletingSchoolId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {tCommon('deleteWarning')}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteSchool} className="bg-red-600 hover:bg-red-700">
+              {tCommon('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

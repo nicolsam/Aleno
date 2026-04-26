@@ -2,6 +2,11 @@ import type { Metadata } from 'next'
 import { NextIntlClientProvider } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import './globals.css'
+import { Geist } from "next/font/google";
+import { cn } from "@/lib/utils";
+import { Toaster } from "@/components/ui/sonner";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
   title: 'Aleno - Teacher Dashboard',
@@ -17,10 +22,11 @@ export default async function RootLayout({
   const messages = await getMessages()
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className={cn("font-sans", geist.variable)}>
       <body className="min-h-screen bg-gray-50">
         <NextIntlClientProvider messages={messages} locale={locale}>
           {children}
+          <Toaster />
         </NextIntlClientProvider>
       </body>
     </html>
