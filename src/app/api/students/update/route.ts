@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
+import { logAction } from '@/lib/audit'
 
 export async function PATCH(request: Request) {
   try {
@@ -34,6 +35,9 @@ export async function PATCH(request: Request) {
         notes,
       },
     })
+
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+    await logAction(payload.id, 'UPDATE_STUDENT_LEVEL', { studentId, readingLevelId }, ipAddress)
 
     return NextResponse.json({ history })
   } catch (error) {

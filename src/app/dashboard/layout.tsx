@@ -18,7 +18,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const locale = useLocale()
   const [schools, setSchools] = useState<School[]>([])
   const [selectedSchool, setSelectedSchool] = useState<string>('')
-  const [teacher, setTeacher] = useState<{ name: string; email: string } | null>(null)
+  const [teacher, setTeacher] = useState<{ name: string; email: string; isGlobalAdmin?: boolean } | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -35,6 +35,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       return
     }
     setTeacher(JSON.parse(storedTeacher))
+
+    // Heartbeat mechanism to keep session active
+    const sendHeartbeat = async () => {
+      try {
+        await fetch('/api/auth/heartbeat', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` }
+        })
+      } catch (e) {
+        console.error('Heartbeat failed', e)
+      }
+    }
+
+    sendHeartbeat() // Send immediately on mount
+    const interval = setInterval(sendHeartbeat, 2 * 60 * 1000) // Then every 2 minutes
+
+    return () => clearInterval(interval)
   }, [router, mounted])
 
   useEffect(() => {
@@ -75,8 +92,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // Do not show filter on Schools page
-  const showFilter = pathname !== '/dashboard/schools' && schools.length > 0
+  // Do not show filter on Schools or Admin pages
+  const showFilter = pathname !== '/dashboard/schools' && !pathname.startsWith('/dashboard/admin') && schools.length > 0
 
   return (
     <div className="min-h-screen flex">
@@ -104,6 +121,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           >
             {t('schools')}
           </a>
+          {teacher?.isGlobalAdmin && (
+            <a
+              href="/dashboard/admin"
+              className={`block px-4 py-2 hover:bg-gray-700 text-yellow-400 ${pathname.startsWith('/dashboard/admin') ? 'bg-gray-700' : ''}`}
+            >
+              Admin Panel
+            </a>
+          )}
         </nav>
         <div className="absolute bottom-0 w-64 p-4 flex flex-col gap-4">
           <LanguageSwitcher />

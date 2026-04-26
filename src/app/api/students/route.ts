@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
+import { logAction } from '@/lib/audit'
 
 export async function GET(request: Request) {
   try {
@@ -74,6 +75,9 @@ export async function POST(request: Request) {
         },
       })
     }
+
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+    await logAction(payload.id, 'CREATE_STUDENT', { studentId: student.id, name, schoolId }, ipAddress)
 
     return NextResponse.json({ student })
   } catch (error) {
