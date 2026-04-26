@@ -23,7 +23,7 @@ export async function GET(request: Request) {
       schoolIds = [schoolId]
     } else {
       const teacherSchools = await prisma.teacherSchool.findMany({
-        where: { teacherId: payload.id },
+        where: { teacherId: payload.id, school: { deletedAt: null } },
         select: { schoolId: true },
       })
       schoolIds = teacherSchools.map((ts) => ts.schoolId)
@@ -39,7 +39,11 @@ export async function GET(request: Request) {
     }
 
     const students = await prisma.student.findMany({
-      where: { schoolId: { in: schoolIds } },
+      where: { 
+        schoolId: { in: schoolIds },
+        deletedAt: null,
+        school: { deletedAt: null }
+      },
       include: {
         readingHistory: {
           orderBy: { recordedAt: 'desc' },

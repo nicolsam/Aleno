@@ -18,10 +18,26 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
 
-    const whereClause = schoolId ? { schoolId } : {}
+    let validSchoolIds: string[] = []
+
+    if (schoolId) {
+      const ts = await prisma.teacherSchool.findUnique({
+        where: { teacherId_schoolId: { teacherId: payload.id, schoolId } }
+      })
+      if (ts) validSchoolIds = [schoolId]
+    } else {
+      const ts = await prisma.teacherSchool.findMany({
+        where: { teacherId: payload.id, school: { deletedAt: null } }
+      })
+      validSchoolIds = ts.map(t => t.schoolId)
+    }
 
     const students = await prisma.student.findMany({
-      where: whereClause,
+      where: {
+        schoolId: { in: validSchoolIds },
+        deletedAt: null,
+        school: { deletedAt: null }
+      },
       include: {
         readingHistory: {
           orderBy: { recordedAt: 'desc' },
