@@ -1,0 +1,69 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { PUT, DELETE } from '@/app/api/students/[id]/route'
+import { prisma } from '@/lib/db'
+import { verifyToken } from '@/lib/auth'
+
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    teacher: { findUnique: vi.fn() },
+    teacherSchool: { findUnique: vi.fn() },
+    student: { findUnique: vi.fn(), update: vi.fn() },
+    auditLog: { create: vi.fn() }
+  }
+}))
+
+vi.mock('@/lib/auth', () => ({
+  verifyToken: vi.fn()
+}))
+
+vi.mock('@/lib/audit', () => ({
+  logAction: vi.fn()
+}))
+
+describe('Students API PUT & DELETE', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const mockRequest = (body?: any) => ({
+    headers: new Headers({ authorization: 'Bearer valid-token' }),
+    json: async () => body
+  } as Request)
+
+  const mockAccess = () => {
+    vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
+    vi.mocked(prisma.teacher.findUnique).mockResolvedValue({ id: 'teacher-1' } as any)
+    vi.mocked(prisma.student.findUnique).mockResolvedValue({ id: 'student-1', schoolId: 'school-1' } as any)
+    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as any)
+  }
+
+  it('PUT should update a student', async () => {
+    mockAccess()
+    vi.mocked(prisma.student.update).mockResolvedValue({ id: 'student-1', name: 'Updated' } as any)
+
+    const res = await PUT(mockRequest({ name: 'Updated', studentNumber: '123', schoolId: 'school-1' }), { params: Promise.resolve({ id: 'student-1' }) })
+    const data = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(data.student.name).toBe('Updated')
+    expect(prisma.student.update).toHaveBeenCalledWith({
+      where: { id: 'student-1' },
+      data: { name: 'Updated', studentNumber: '123', schoolId: 'school-1' }
+    })
+  })
+
+  it('DELETE should soft delete a student', async () => {
+    mockAccess()
+    vi.mocked(prisma.student.update).mockResolvedValue({ id: 'student-1' } as any)
+
+    const res = await DELETE(mockRequest(), { params: Promise.resolve({ id: 'student-1' }) })
+    const data = await res.json()
+
+    expect(res.status).toBe(200)
+    expect(data.success).toBe(true)
+    expect(prisma.student.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'student-1' },
+      data: expect.objectContaining({ deletedAt: expect.any(Date) })
+    }))
+  })
+})
