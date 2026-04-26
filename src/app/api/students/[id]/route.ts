@@ -26,20 +26,26 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const access = await checkAccess(request, id)
     if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
 
-    const { name, studentNumber, schoolId } = await request.json()
-    if (!name || !studentNumber || !schoolId) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
+    const { name, studentNumber, classId } = await request.json()
+    if (!name || !studentNumber || !classId) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
 
-    // Check if new schoolId is accessible
-    if (access.student!.schoolId !== schoolId) {
-      const teacherSchool = await prisma.teacherSchool.findUnique({
-        where: { teacherId_schoolId: { teacherId: access.payload!.id, schoolId } }
-      })
-      if (!teacherSchool) return NextResponse.json({ error: 'Forbidden for new school' }, { status: 403 })
+    const classRecord = await prisma.class.findUnique({ where: { id: classId } })
+    if (!classRecord) return NextResponse.json({ error: 'Class not found' }, { status: 404 })
+
+    // If changing classes, make sure the new class belongs to a school the teacher has access to
+    if (access.student!.classId !== classId) {
+      if (access.student!.schoolId !== classRecord.schoolId) {
+        const ts = await prisma.teacherSchool.findUnique({
+          where: { teacherId_schoolId: { teacherId: access.payload!.id, schoolId: classRecord.schoolId } }
+        })
+        if (!ts) return NextResponse.json({ error: 'Forbidden for new class' }, { status: 403 })
+      }
     }
 
     const updatedStudent = await prisma.student.update({
       where: { id },
-      data: { name, studentNumber, schoolId }
+      data: { name, studentNumber, classId, schoolId: classRecord.schoolId },
+      include: { class: true }
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
