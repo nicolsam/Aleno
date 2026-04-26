@@ -17,11 +17,21 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Pencil, Trash2 } from "lucide-react"
 
+interface ClassRecord {
+  id: string
+  grade: string
+  section: string
+  shift: string
+  schoolId: string
+}
+
 interface Student {
   id: string
   name: string
   studentNumber: string
   schoolId: string
+  classId: string
+  class?: ClassRecord
   readingHistory: {
     id: string
     readingLevel: { name: string; code: string }
@@ -40,21 +50,32 @@ interface School {
   name: string
 }
 
+const VALID_SHIFTS = ['Morning', 'Afternoon', 'Night']
+const VALID_GRADES = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano', '1ª Série', '2ª Série', '3ª Série']
+
 export default function StudentsPage() {
   const router = useRouter()
   const t = useTranslations('students')
+  const tClasses = useTranslations('classes')
   const tCommon = useTranslations('common')
   const tLevels = useTranslations('levels')
   const tErrors = useTranslations('errors')
   
   const [students, setStudents] = useState<Student[]>([])
   const [levels, setLevels] = useState<ReadingLevel[]>([])
+  const [classes, setClasses] = useState<ClassRecord[]>([])
   const [schools, setSchools] = useState<School[]>([])
   const [schoolId, setSchoolId] = useState('')
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
-  const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', schoolId: '' })
+  
+  // Filters
+  const [gradeFilter, setGradeFilter] = useState('')
+  const [sectionFilter, setSectionFilter] = useState('')
+  const [shiftFilter, setShiftFilter] = useState('')
+
+  const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', classId: '' })
   const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '' })
   
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
@@ -82,21 +103,31 @@ export default function StudentsPage() {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const schoolsRes = await fetch('/api/schools', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const schoolsData = await schoolsRes.json()
-      if (schoolsRes.ok && schoolsData.schools) {
-        setSchools(schoolsData.schools)
+      const schoolsRes = await fetch('/api/schools', { headers: { Authorization: `Bearer ${token}` } })
+      if (schoolsRes.ok) {
+        const schoolsData = await schoolsRes.json()
+        setSchools(schoolsData.schools || [])
       }
 
-      const url = schoolId ? `/api/students?schoolId=${schoolId}` : '/api/students'
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (res.ok && data.students) {
-        setStudents(data.students)
+      const classesUrl = schoolId ? `/api/classes?schoolId=${schoolId}` : '/api/classes'
+      const classesRes = await fetch(classesUrl, { headers: { Authorization: `Bearer ${token}` } })
+      if (classesRes.ok) {
+        const classesData = await classesRes.json()
+        setClasses(classesData.classes || [])
+      }
+
+      const params = new URLSearchParams()
+      if (schoolId) params.append('schoolId', schoolId)
+      if (gradeFilter) params.append('grade', gradeFilter)
+      if (sectionFilter) params.append('section', sectionFilter)
+      if (shiftFilter) params.append('shift', shiftFilter)
+
+      const studentsUrl = `/api/students${params.toString() ? `?${params.toString()}` : ''}`
+
+      const res = await fetch(studentsUrl, { headers: { Authorization: `Bearer ${token}` } })
+      if (res.ok) {
+        const data = await res.json()
+        setStudents(data.students || [])
       }
 
       const levelsRes = await fetch('/api/levels')
@@ -107,13 +138,13 @@ export default function StudentsPage() {
       setLoading(false)
     }
     fetchData()
-  }, [schoolId])
+  }, [schoolId, gradeFilter, sectionFilter, shiftFilter])
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault()
     const token = localStorage.getItem('token')
-    if (!token || !newStudent.schoolId) {
-      setError(tErrors('selectSchool'))
+    if (!token || !newStudent.classId) {
+      setError(tClasses('selectClass'))
       return
     }
 
@@ -127,7 +158,8 @@ export default function StudentsPage() {
       const data = await res.json()
       setStudents([...students, { ...data.student, readingHistory: data.student.readingHistory || [] }])
       setShowModal(false)
-      setNewStudent({ name: '', studentNumber: '', schoolId: '' })
+      setNewStudent({ name: '', studentNumber: '', classId: '' })
+      toast.success(tCommon('save'))
     } else {
       const data = await res.json()
       setError(data.error || tErrors('failedCreate'))
@@ -146,7 +178,7 @@ export default function StudentsPage() {
       body: JSON.stringify({ 
         name: editingStudent.name, 
         studentNumber: editingStudent.studentNumber,
-        schoolId: editingStudent.schoolId
+        classId: editingStudent.classId
       }),
     })
 
@@ -221,6 +253,11 @@ export default function StudentsPage() {
     }
   }
 
+  const formatClassName = (c?: ClassRecord) => {
+    if (!c) return 'N/A'
+    return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)})`
+  }
+
   if (loading) {
     return <StudentsSkeleton />
   }
@@ -229,10 +266,7 @@ export default function StudentsPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-700 mb-4">{t('needSchool')}</p>
-        <a
-          href="/dashboard/schools"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block"
-        >
+        <a href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
           {tCommon('createSchool')}
         </a>
       </div>
@@ -251,6 +285,27 @@ export default function StudentsPage() {
         </button>
       </div>
 
+      <div className="flex gap-4 mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="flex-1">
+          <label className="block text-sm text-gray-600 mb-1">{tClasses('grade')}</label>
+          <select value={gradeFilter} onChange={e => setGradeFilter(e.target.value)} className="w-full p-2 border rounded">
+            <option value="">{tClasses('all')}</option>
+            {VALID_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm text-gray-600 mb-1">{tClasses('section')}</label>
+          <input type="text" value={sectionFilter} onChange={e => setSectionFilter(e.target.value.toUpperCase())} maxLength={2} className="w-full p-2 border rounded" placeholder={tClasses('all')} />
+        </div>
+        <div className="flex-1">
+          <label className="block text-sm text-gray-600 mb-1">{tClasses('shift')}</label>
+          <select value={shiftFilter} onChange={e => setShiftFilter(e.target.value)} className="w-full p-2 border rounded">
+            <option value="">{tClasses('all')}</option>
+            {VALID_SHIFTS.map(s => <option key={s} value={s}>{tClasses(`shifts.${s}`)}</option>)}
+          </select>
+        </div>
+      </div>
+
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
       )}
@@ -261,6 +316,7 @@ export default function StudentsPage() {
             <tr>
               <th className="text-left p-4 text-gray-700">{t('name')}</th>
               <th className="text-left p-4 text-gray-700">{t('studentNumber')}</th>
+              <th className="text-left p-4 text-gray-700">{tClasses('class')}</th>
               <th className="text-left p-4 text-gray-700">{t('currentLevel')}</th>
               <th className="text-left p-4 text-gray-700">{t('actions')}</th>
             </tr>
@@ -268,7 +324,7 @@ export default function StudentsPage() {
           <tbody>
             {students.length === 0 ? (
               <tr>
-                <td colSpan={4} className="p-4 text-center text-gray-700">
+                <td colSpan={5} className="p-4 text-center text-gray-700">
                   {t('noStudents')}
                 </td>
               </tr>
@@ -277,6 +333,7 @@ export default function StudentsPage() {
                 <tr key={student.id} className="border-t hover:bg-gray-50 group">
                   <td className="p-4 text-gray-800">{student.name}</td>
                   <td className="p-4 text-gray-800">{student.studentNumber}</td>
+                  <td className="p-4 text-gray-800">{formatClassName(student.class)}</td>
                   <td className="p-4">
                     <span
                       className={`px-2 py-1 rounded text-sm ${
@@ -331,15 +388,15 @@ export default function StudentsPage() {
             <h2 className="text-xl font-bold text-gray-800 mb-4">{t('add')}</h2>
             <form onSubmit={handleCreateStudent} className="space-y-4">
               <select
-                value={newStudent.schoolId}
-                onChange={(e) => setNewStudent({ ...newStudent, schoolId: e.target.value })}
+                value={newStudent.classId}
+                onChange={(e) => setNewStudent({ ...newStudent, classId: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded"
                 required
               >
-                <option value="">{t('selectSchool')}</option>
-                {schools.map((school) => (
-                  <option key={school.id} value={school.id}>
-                    {school.name}
+                <option value="">{tClasses('selectClass')}</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {formatClassName(c)}
                   </option>
                 ))}
               </select>
@@ -360,17 +417,10 @@ export default function StudentsPage() {
                 required
               />
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
+                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                   {tCommon('add')}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded"
-                >
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded">
                   {tCommon('cancel')}
                 </button>
               </div>
@@ -386,15 +436,15 @@ export default function StudentsPage() {
             <h2 className="text-xl font-bold text-gray-800 mb-4">{t('editStudent')}</h2>
             <form onSubmit={handleUpdateStudent} className="space-y-4">
               <select
-                value={editingStudent.schoolId}
-                onChange={(e) => setEditingStudent({ ...editingStudent, schoolId: e.target.value })}
+                value={editingStudent.classId}
+                onChange={(e) => setEditingStudent({ ...editingStudent, classId: e.target.value })}
                 className="w-full p-2 border border-gray-300 rounded"
                 required
               >
-                <option value="">{t('selectSchool')}</option>
-                {schools.map((school) => (
-                  <option key={school.id} value={school.id}>
-                    {school.name}
+                <option value="">{tClasses('selectClass')}</option>
+                {classes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {formatClassName(c)}
                   </option>
                 ))}
               </select>
@@ -415,17 +465,10 @@ export default function StudentsPage() {
                 required
               />
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
+                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                   {tCommon('save')}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingStudent(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded"
-                >
+                <button type="button" onClick={() => setEditingStudent(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded">
                   {tCommon('cancel')}
                 </button>
               </div>
@@ -461,17 +504,10 @@ export default function StudentsPage() {
                 rows={3}
               />
               <div className="flex gap-2">
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
+                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                   {tCommon('save')}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '' })}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded"
-                >
+                <button type="button" onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '' })} className="flex-1 px-4 py-2 border border-gray-300 rounded">
                   {tCommon('cancel')}
                 </button>
               </div>
@@ -484,9 +520,7 @@ export default function StudentsPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{tCommon('confirmDelete')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {tCommon('deleteWarning')}
-            </AlertDialogDescription>
+            <AlertDialogDescription>{tCommon('deleteWarning')}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>

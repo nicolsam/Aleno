@@ -16,6 +16,7 @@
     "dashboard": "Painel",
     "students": "Alunos",
     "schools": "Escolas",
+    "classes": "Turmas",
     "logout": "Sair",
     "language": "Idioma"
   },
@@ -34,6 +35,28 @@
     "selectSchool": "Selecionar escola",
     "noSchool": "Nenhuma escola selecionada",
     "notes": "Observações (opcional)"
+  },
+  "classes": {
+    "title": "Turmas",
+    "add": "Adicionar Turma",
+    "editClass": "Editar Turma",
+    "grade": "Ano/Série",
+    "section": "Turma (Letra)",
+    "shift": "Turno",
+    "school": "Escola",
+    "noClasses": "Nenhuma turma ainda. Adicione sua primeira turma.",
+    "needSchool": "Você precisa criar uma escola primeiro.",
+    "selectSchool": "Selecionar escola",
+    "selectGrade": "Selecionar ano/série",
+    "selectShift": "Selecionar turno",
+    "selectClass": "Selecionar uma turma",
+    "class": "Turma",
+    "all": "Todos",
+    "shifts": {
+      "Morning": "Manhã",
+      "Afternoon": "Tarde",
+      "Night": "Noite"
+    }
   },
   "schools": {
     "title": "Escolas",

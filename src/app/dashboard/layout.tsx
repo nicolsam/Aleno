@@ -116,6 +116,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {t('students')}
           </a>
           <a
+            href="/dashboard/classes"
+            className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/classes' ? 'bg-gray-700' : ''}`}
+          >
+            {t('classes')}
+          </a>
+          <a
             href="/dashboard/schools"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
           >

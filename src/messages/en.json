@@ -16,6 +16,7 @@
     "dashboard": "Dashboard",
     "students": "Students",
     "schools": "Schools",
+    "classes": "Classes",
     "logout": "Logout",
     "language": "Language"
   },
@@ -34,6 +35,28 @@
     "selectSchool": "Select school",
     "noSchool": "No school selected",
     "notes": "Notes (optional)"
+  },
+  "classes": {
+    "title": "Classes",
+    "add": "Add Class",
+    "editClass": "Edit Class",
+    "grade": "Grade",
+    "section": "Section",
+    "shift": "Shift",
+    "school": "School",
+    "noClasses": "No classes yet. Add your first class.",
+    "needSchool": "You need to create a school first.",
+    "selectSchool": "Select a school",
+    "selectGrade": "Select a grade",
+    "selectShift": "Select a shift",
+    "selectClass": "Select a class",
+    "class": "Class",
+    "all": "All",
+    "shifts": {
+      "Morning": "Morning",
+      "Afternoon": "Afternoon",
+      "Night": "Night"
+    }
   },
   "schools": {
     "title": "Schools",
