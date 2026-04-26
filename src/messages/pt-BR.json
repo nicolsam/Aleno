@@ -1,0 +1,84 @@
+{
+  "common": {
+    "loading": "Carregando",
+    "cancel": "Cancelar",
+    "save": "Salvar",
+    "add": "Adicionar",
+    "createSchool": "Criar uma Escola",
+    "addSchool": "Adicionar Escola"
+  },
+  "nav": {
+    "dashboard": "Painel",
+    "students": "Alunos",
+    "schools": "Escolas",
+    "logout": "Sair",
+    "language": "Idioma"
+  },
+  "students": {
+    "title": "Alunos",
+    "add": "Adicionar Aluno",
+    "name": "Nome",
+    "studentNumber": "Número do Aluno",
+    "currentLevel": "Nível Atual",
+    "actions": "Ações",
+    "updateLevel": "Atualizar Nível",
+    "notAssessed": "Não avaliado",
+    "noStudents": "Nenhum aluno ainda. Adicione seu primeiro aluno.",
+    "needSchool": "Você precisa criar uma escola primeiro.",
+    "selectSchool": "Selecionar escola",
+    "noSchool": "Nenhuma escola selecionada",
+    "notes": "Observações (opcional)"
+  },
+  "schools": {
+    "title": "Escolas",
+    "add": "Adicionar Escola",
+    "name": "Nome da escola",
+    "address": "Endereço",
+    "noAddress": "Sem endereço",
+    "noSchools": "Nenhuma escola ainda. Adicione sua primeira escola."
+  },
+  "dashboard": {
+    "title": "Painel",
+    "totalStudents": "Total de Alunos",
+    "averageLevel": "Nível Médio",
+    "needAttention": "Precisa Atenção",
+    "distribution": "Distribuição por Nível",
+    "byLevel": "Alunos por Nível",
+    "studentsAttention": "Alunos que Precisam de Atenção",
+    "noData": "Nenhum aluno ainda. Adicione alunos para ver estatísticas."
+  },
+  "auth": {
+    "login": "Login do Professor",
+    "register": "Criar Conta",
+    "email": "E-mail",
+    "password": "Senha",
+    "name": "Seu nome",
+    "alreadyAccount": "Já tem uma conta",
+    "noAccount": "Não tem uma conta",
+    "loginBtn": "Entrar",
+    "createBtn": "Criar Conta",
+    "loginError": "Credenciais inválidas",
+    "registerSuccess": "Conta criada com sucesso"
+  },
+  "levels": {
+    "DNI": "Não Identifica",
+    "LO": "Apenas Letras",
+    "SO": "Apenas Sílabas",
+    "RW": "Lê Palavras",
+    "RS": "Lê Frases",
+    "RTS": "Lê Texto Silabando",
+    "RTF": "Lê Texto com Fluência",
+    "selectLevel": "Selecionar nível"
+  },
+  "errors": {
+    "selectSchool": "Por favor selecione uma escola primeiro",
+    "selectLevel": "Por favor selecione um nível de leitura",
+    "failedCreate": "Falha ao criar aluno",
+    "failedUpdate": "Falha ao atualizar nível de leitura",
+    "failedConnect": "Falha ao conectar ao servidor",
+    "invalidCredentials": "Credenciais inválidas",
+    "emailExists": "E-mail já existe",
+    "missingFields": "Campos obrigatórios",
+    "internalError": "Erro interno"
+  }
+}

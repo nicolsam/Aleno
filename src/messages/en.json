@@ -1,0 +1,84 @@
+{
+  "common": {
+    "loading": "Loading",
+    "cancel": "Cancel",
+    "save": "Save",
+    "add": "Add",
+    "createSchool": "Create a School",
+    "addSchool": "Add School"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "schools": "Schools",
+    "logout": "Logout",
+    "language": "Language"
+  },
+  "students": {
+    "title": "Students",
+    "add": "Add Student",
+    "name": "Name",
+    "studentNumber": "Student Number",
+    "currentLevel": "Current Level",
+    "actions": "Actions",
+    "updateLevel": "Update Level",
+    "notAssessed": "Not assessed",
+    "noStudents": "No students yet. Add your first student.",
+    "needSchool": "You need to create a school first.",
+    "selectSchool": "Select school",
+    "noSchool": "No school selected",
+    "notes": "Notes (optional)"
+  },
+  "schools": {
+    "title": "Schools",
+    "add": "Add School",
+    "name": "School name",
+    "address": "Address",
+    "noAddress": "No address",
+    "noSchools": "No schools yet. Add your first school."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "totalStudents": "Total Students",
+    "averageLevel": "Average Level",
+    "needAttention": "Need Attention",
+    "distribution": "Distribution by Level",
+    "byLevel": "Students by Level",
+    "studentsAttention": "Students Need Attention",
+    "noData": "No students yet. Add students to see statistics."
+  },
+  "auth": {
+    "login": "Teacher Login",
+    "register": "Create Account",
+    "email": "Email",
+    "password": "Password",
+    "name": "Your name",
+    "alreadyAccount": "Already have an account",
+    "noAccount": "Don't have an account",
+    "loginBtn": "Login",
+    "createBtn": "Create Account",
+    "loginError": "Invalid credentials",
+    "registerSuccess": "Account created successfully"
+  },
+  "levels": {
+    "DNI": "Does Not Identify",
+    "LO": "Letters Only",
+    "SO": "Syllables Only",
+    "RW": "Reads Words",
+    "RS": "Reads Sentences",
+    "RTS": "Reads Text Syllabically",
+    "RTF": "Reads Text Fluently",
+    "selectLevel": "Select level"
+  },
+  "errors": {
+    "selectSchool": "Please select a school first",
+    "selectLevel": "Please select a reading level",
+    "failedCreate": "Failed to create student",
+    "failedUpdate": "Failed to update reading level",
+    "failedConnect": "Failed to connect to server",
+    "invalidCredentials": "Invalid credentials",
+    "emailExists": "Email already exists",
+    "missingFields": "Missing fields",
+    "internalError": "Internal error"
+  }
+}
