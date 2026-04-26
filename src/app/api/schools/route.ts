@@ -15,8 +15,16 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: payload.id }
+    })
+
+    if (!teacher) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
+    }
+
     const teacherSchools = await prisma.teacherSchool.findMany({
-      where: { teacherId: payload.id },
+      where: { teacherId: payload.id, school: { deletedAt: null } },
       include: { school: true },
     })
 
@@ -38,6 +46,14 @@ export async function POST(request: Request) {
     const payload = verifyToken(token)
     if (!payload) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
+
+    const teacher = await prisma.teacher.findUnique({
+      where: { id: payload.id }
+    })
+
+    if (!teacher) {
+      return NextResponse.json({ error: 'User not found' }, { status: 401 })
     }
 
     const body = await request.json()

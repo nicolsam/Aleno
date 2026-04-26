@@ -4,6 +4,11 @@
     "cancel": "Cancelar",
     "save": "Salvar",
     "add": "Adicionar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "undo": "Desfazer",
+    "confirmDelete": "Tem certeza que deseja excluir?",
+    "deleteWarning": "Esta ação não pode ser desfeita.",
     "createSchool": "Criar uma Escola",
     "addSchool": "Adicionar Escola"
   },
@@ -17,6 +22,7 @@
   "students": {
     "title": "Alunos",
     "add": "Adicionar Aluno",
+    "editStudent": "Editar Aluno",
     "name": "Nome",
     "studentNumber": "Número do Aluno",
     "currentLevel": "Nível Atual",
@@ -32,8 +38,10 @@
   "schools": {
     "title": "Escolas",
     "add": "Adicionar Escola",
+    "editSchool": "Editar Escola",
     "name": "Nome da escola",
     "address": "Endereço",
+    "addressOptional": "Endereço (opcional)",
     "noAddress": "Sem endereço",
     "noSchools": "Nenhuma escola ainda. Adicione sua primeira escola."
   },
@@ -74,11 +82,12 @@
     "selectSchool": "Por favor selecione uma escola primeiro",
     "selectLevel": "Por favor selecione um nível de leitura",
     "failedCreate": "Falha ao criar aluno",
-    "failedUpdate": "Falha ao atualizar nível de leitura",
+    "failedUpdate": "Falha ao atualizar",
     "failedConnect": "Falha ao conectar ao servidor",
     "invalidCredentials": "Credenciais inválidas",
     "emailExists": "E-mail já existe",
     "missingFields": "Campos obrigatórios",
-    "internalError": "Erro interno"
+    "internalError": "Erro interno",
+    "failedDelete": "Falha ao excluir"
   }
 }
