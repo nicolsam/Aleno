@@ -2,9 +2,13 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 
 export default function LoginPage() {
   const router = useRouter()
+  const t = useTranslations('auth')
+  const tErrors = useTranslations('errors')
+  const tCommon = useTranslations('common')
   const [isRegister, setIsRegister] = useState(false)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
@@ -27,7 +31,7 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data.error || 'An error occurred')
+        setError(data.error || tErrors('internalError'))
         return
       }
 
@@ -35,7 +39,7 @@ export default function LoginPage() {
       localStorage.setItem('teacher', JSON.stringify(data.teacher))
       router.push('/dashboard')
     } catch {
-      setError('Failed to connect to server')
+      setError(tErrors('failedConnect'))
     } finally {
       setLoading(false)
     }
@@ -46,14 +50,14 @@ export default function LoginPage() {
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
         <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Aleno</h1>
         <h2 className="text-lg text-center mb-6 text-gray-600">
-          {isRegister ? 'Create Account' : 'Teacher Login'}
+          {isRegister ? t('register') : t('login')}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {isRegister && (
             <input
               type="text"
-              placeholder="Your name"
+              placeholder={t('name')}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -62,7 +66,7 @@ export default function LoginPage() {
           )}
           <input
             type="email"
-            placeholder="Email"
+            placeholder={t('email')}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -70,7 +74,7 @@ export default function LoginPage() {
           />
           <input
             type="password"
-            placeholder="Password"
+            placeholder={t('password')}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -84,17 +88,17 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
           >
-            {loading ? 'Loading...' : isRegister ? 'Create Account' : 'Login'}
+            {loading ? tCommon('loading') + '...' : isRegister ? t('createBtn') : t('loginBtn')}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-gray-600">
-          {isRegister ? 'Already have an account?' : "Don't have an account?"}{' '}
+          {isRegister ? t('alreadyAccount') : t('noAccount')}{' '}
           <button
             onClick={() => { setIsRegister(!isRegister); setError('') }}
             className="text-blue-600 hover:underline"
           >
-            {isRegister ? 'Login' : 'Register'}
+            {isRegister ? t('loginBtn') : t('register')}
           </button>
         </p>
       </div>
