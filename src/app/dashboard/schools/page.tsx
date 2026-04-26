@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
+import SchoolsSkeleton from '@/components/skeletons/SchoolsSkeleton'
 
 interface School {
   id: string
@@ -56,7 +58,7 @@ export default function SchoolsPage() {
   }
 
   if (loading) {
-    return <div className="text-gray-700">Loading...</div>
+    return <SchoolsSkeleton />
   }
 
   return (

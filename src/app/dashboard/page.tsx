@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
 
 interface Stats {
   totalStudents: number
@@ -56,7 +57,7 @@ export default function DashboardPage() {
   }, [schoolId])
 
   if (loading) {
-    return <div className="text-gray-700">{t('common.loading')}</div>
+    return <DashboardSkeleton />
   }
 
   if (!stats || stats.totalStudents === 0) {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
 
 interface Student {
   id: string
@@ -139,7 +140,7 @@ export default function StudentsPage() {
   }
 
   if (loading) {
-    return <div className="text-gray-700">{t('common.loading')}</div>
+    return <StudentsSkeleton />
   }
 
   if (schools.length === 0) {
