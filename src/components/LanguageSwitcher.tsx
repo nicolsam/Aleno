@@ -12,30 +12,46 @@ export default function LanguageSwitcher() {
     setMounted(true)
   }, [])
 
-  const toggleLocale = () => {
-    const newLocale = locale === 'en' ? 'pt-BR' : 'en'
+  const switchLocale = (newLocale: string) => {
+    if (locale === newLocale) return
     document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`
     window.location.reload()
   }
 
   if (!mounted) {
     return (
-      <button className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300">
-        <span>PT</span>
-      </button>
+      <div className="w-[104px] h-[40px] bg-white/5 rounded-full animate-pulse border border-white/5" />
     )
   }
 
   return (
-    <button
-      onClick={toggleLocale}
-      className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors"
+    <div 
+      className="relative flex items-center p-1 bg-black/20 backdrop-blur-sm rounded-full border border-white/10 shadow-inner"
       title={t('language')}
     >
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5h12M9 3v2m1.048 9.5A8 8 0 016 12l3.5-2 1.5 2M12 16l-3-2-1.5-2M6 12l3.5 2 1.5-2" />
-      </svg>
-      <span>{locale === 'en' ? 'EN' : 'PT'}</span>
-    </button>
+      {/* Sliding Active Pill Background */}
+      <div
+        className={`absolute left-1 top-1 w-12 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full shadow transition-transform duration-300 ease-out ${
+          locale === 'pt-BR' ? 'translate-x-full' : 'translate-x-0'
+        }`}
+      />
+      
+      <button
+        onClick={() => switchLocale('en')}
+        className={`relative z-10 flex items-center justify-center w-12 h-8 text-xs font-bold tracking-wider transition-colors duration-300 rounded-full ${
+          locale === 'en' ? 'text-white drop-shadow-md' : 'text-gray-400 hover:text-white'
+        }`}
+      >
+        EN
+      </button>
+      <button
+        onClick={() => switchLocale('pt-BR')}
+        className={`relative z-10 flex items-center justify-center w-12 h-8 text-xs font-bold tracking-wider transition-colors duration-300 rounded-full ${
+          locale === 'pt-BR' ? 'text-white drop-shadow-md' : 'text-gray-400 hover:text-white'
+        }`}
+      >
+        PT
+      </button>
+    </div>
   )
 }
