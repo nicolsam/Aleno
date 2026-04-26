@@ -24,13 +24,45 @@ model Teacher {
   name     String
   email    String   @unique
   password String
+  isGlobalAdmin Boolean @default(false) @map("is_global_admin")
+  lastActiveAt DateTime? @map("last_active_at")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   schools              TeacherSchool[]
   readingRecords      StudentReadingHistory[]
+  sessions            UserSession[]
+  auditLogs           AuditLog[]
 
   @@map("teachers")
+}
+
+model UserSession {
+  id           String   @id @default(uuid())
+  teacherId    String   @map("teacher_id")
+  token        String   @unique
+  ipAddress    String?  @map("ip_address")
+  userAgent    String?  @map("user_agent")
+  lastActiveAt DateTime @default(now()) @map("last_active_at")
+  createdAt    DateTime @default(now()) @map("created_at")
+  expiresAt    DateTime @map("expires_at")
+
+  teacher      Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  
+  @@map("user_sessions")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  teacherId   String   @map("teacher_id")
+  action      String   
+  details     Json?    
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  teacher     Teacher  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
 }
 
 model TeacherSchool {
