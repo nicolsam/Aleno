@@ -10,6 +10,8 @@ interface Stats {
   totalStudents: number
   distribution: { level: string; name: string; count: number; percentage: number }[]
   needAttention: { id: string; name: string; studentNumber: string; schoolName: string; level: string; levelCode: string }[]
+  mostCommonLevel: string | null
+  improvedThisMonth: number
 }
 
 const COLORS = ['#EF4444', '#F97316', '#EAB308', '#84CC16', '#22C55E', '#14B8A6', '#06B6D4']
@@ -75,16 +77,20 @@ export default function DashboardPage() {
     <div>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">{t('dashboard.title')}</h1>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-gray-600 text-sm">{t('dashboard.totalStudents')}</h3>
           <p className="text-3xl font-bold text-gray-800">{stats.totalStudents}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-600 text-sm">{t('dashboard.averageLevel')}</h3>
-          <p className="text-3xl font-bold text-gray-800">
-            {stats.distribution.reduce((acc, d) => acc + d.count * (8 - stats.distribution.indexOf(d)), 0) / stats.totalStudents || 0}
+          <h3 className="text-gray-600 text-sm">{t('dashboard.mostCommonLevel')}</h3>
+          <p className="text-2xl font-bold text-gray-800">
+            {stats.mostCommonLevel ? t(`levels.${stats.mostCommonLevel}`) : '-'}
           </p>
+        </div>
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-gray-600 text-sm">{t('dashboard.improvedThisMonth')}</h3>
+          <p className="text-3xl font-bold text-green-600">{stats.improvedThisMonth}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
           <h3 className="text-gray-600 text-sm">{t('dashboard.needAttention')}</h3>

@@ -79,7 +79,8 @@
   "dashboard": {
     "title": "Painel",
     "totalStudents": "Total de Alunos",
-    "averageLevel": "Nível Médio",
+    "mostCommonLevel": "Nível Mais Comum",
+    "improvedThisMonth": "Melhoraram Este Mês",
     "needAttention": "Precisa Atenção",
     "distribution": "Distribuição por Nível",
     "byLevel": "Alunos por Nível",

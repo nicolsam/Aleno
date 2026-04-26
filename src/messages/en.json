@@ -79,7 +79,8 @@
   "dashboard": {
     "title": "Dashboard",
     "totalStudents": "Total Students",
-    "averageLevel": "Average Level",
+    "mostCommonLevel": "Most Common Level",
+    "improvedThisMonth": "Improved This Month",
     "needAttention": "Need Attention",
     "distribution": "Distribution by Level",
     "byLevel": "Students by Level",

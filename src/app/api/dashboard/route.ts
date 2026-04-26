@@ -82,11 +82,43 @@ export async function GET(request: Request) {
         levelCode: s.readingHistory[0]?.readingLevel.code || 'N/A',
       }))
 
+    // Most common level
+    const mostCommon = distribution.reduce((best, d) => d.count > best.count ? d : best, distribution[0])
+    const mostCommonLevel = mostCommon && mostCommon.count > 0 ? mostCommon.level : null
+
+    // Improved this month: students whose latest level is higher than their previous level,
+    // where the latest assessment was recorded this month
+    const now = new Date()
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    let improvedThisMonth = 0
+    for (const student of students) {
+      const history = await prisma.studentReadingHistory.findMany({
+        where: { studentId: student.id },
+        orderBy: { recordedAt: 'desc' },
+        take: 2,
+        include: { readingLevel: true },
+      })
+
+      if (history.length >= 2) {
+        const latest = history[0]
+        const previous = history[1]
+        if (
+          new Date(latest.recordedAt) >= startOfMonth &&
+          latest.readingLevel.order > previous.readingLevel.order
+        ) {
+          improvedThisMonth++
+        }
+      }
+    }
+
     return NextResponse.json({
       totalStudents: students.length,
       distribution,
       byLevel: distribution,
       needAttention,
+      mostCommonLevel,
+      improvedThisMonth,
     })
   } catch (error) {
     console.error('Dashboard error:', error)
