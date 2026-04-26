@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
 
 interface AuditLog {
   id: string
@@ -39,7 +40,7 @@ export default function AdminLogsPage() {
     fetchLogs()
   }, [router])
 
-  if (loading) return <div className="p-8 text-gray-500">Loading audit logs...</div>
+  if (loading) return <StudentsSkeleton />
 
   return (
     <div className="space-y-6">

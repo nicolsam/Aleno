@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
 
 interface AdminStats {
   totalSchools: number
@@ -39,7 +40,7 @@ export default function AdminDashboardPage() {
     fetchStats()
   }, [router])
 
-  if (loading) return <div className="p-8 text-gray-500">Loading admin dashboard...</div>
+  if (loading) return <DashboardSkeleton />
 
   return (
     <div className="space-y-6">
