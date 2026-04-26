@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useTranslations } from 'next-intl'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 interface Stats {
@@ -12,12 +13,9 @@ interface Stats {
 
 const COLORS = ['#EF4444', '#F97316', '#EAB308', '#84CC16', '#22C55E', '#14B8A6', '#06B6D4']
 
-interface DashboardLayout {
-  children: React.ReactNode
-}
-
 export default function DashboardPage() {
   const router = useRouter()
+  const t = useTranslations()
   const [stats, setStats] = useState<Stats | null>(null)
   const [schoolId, setSchoolId] = useState('')
   const [loading, setLoading] = useState(true)
@@ -28,8 +26,15 @@ export default function DashboardPage() {
       router.push('/login')
       return
     }
-    const storedSchool = localStorage.getItem('selectedSchool')
-    setSchoolId(storedSchool || '')
+    
+    const handleSchoolChange = () => {
+      const storedSchool = localStorage.getItem('selectedSchool')
+      setSchoolId(storedSchool || '')
+    }
+
+    handleSchoolChange()
+    window.addEventListener('schoolChanged', handleSchoolChange)
+    return () => window.removeEventListener('schoolChanged', handleSchoolChange)
   }, [router])
 
   useEffect(() => {
@@ -51,15 +56,15 @@ export default function DashboardPage() {
   }, [schoolId])
 
   if (loading) {
-    return <div className="text-gray-700">Loading...</div>
+    return <div className="text-gray-700">{t('common.loading')}</div>
   }
 
   if (!stats || stats.totalStudents === 0) {
     return (
       <div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-800 mb-6">{t('dashboard.title')}</h1>
         <div className="bg-white p-8 rounded-lg shadow text-center text-gray-700">
-          No students yet. Add students to see statistics.
+          {t('dashboard.noData')}
         </div>
       </div>
     )
@@ -67,34 +72,34 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">{t('dashboard.title')}</h1>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-600 text-sm">Total Students</h3>
+          <h3 className="text-gray-600 text-sm">{t('dashboard.totalStudents')}</h3>
           <p className="text-3xl font-bold text-gray-800">{stats.totalStudents}</p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-600 text-sm">Average Level</h3>
+          <h3 className="text-gray-600 text-sm">{t('dashboard.averageLevel')}</h3>
           <p className="text-3xl font-bold text-gray-800">
             {stats.distribution.reduce((acc, d) => acc + d.count * (8 - stats.distribution.indexOf(d)), 0) / stats.totalStudents || 0}
           </p>
         </div>
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-600 text-sm">Need Attention</h3>
+          <h3 className="text-gray-600 text-sm">{t('dashboard.needAttention')}</h3>
           <p className="text-3xl font-bold text-red-600">{stats.needAttention.length}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribution by Level</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('dashboard.distribution')}</h3>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie
-                data={stats.distribution}
+                data={stats.distribution.map(d => ({ ...d, translatedName: t(`levels.${d.level}`) }))}
                 dataKey="count"
-                nameKey="name"
+                nameKey="translatedName"
                 cx="50%"
                 cy="50%"
                 outerRadius={100}
@@ -110,14 +115,14 @@ export default function DashboardPage() {
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Students by Level</h3>
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('dashboard.byLevel')}</h3>
           <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stats.distribution} layout="vertical">
+            <BarChart data={stats.distribution.map(d => ({ ...d, translatedName: t(`levels.${d.level}`) }))} layout="vertical">
               <XAxis type="number" />
-              <YAxis type="category" dataKey="level" width={80} />
+              <YAxis type="category" dataKey="translatedName" width={120} />
               <Tooltip />
               <Legend />
-              <Bar dataKey="count" fill="#3B82F6" name="Students" />
+              <Bar dataKey="count" fill="#3B82F6" name={t('nav.students')} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -125,26 +130,26 @@ export default function DashboardPage() {
 
       {stats.needAttention.length > 0 && (
         <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4 text-red-600">Students Need Attention</h3>
+          <h3 className="text-lg font-semibold text-red-600 mb-4">{t('dashboard.studentsAttention')}</h3>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-2">Name</th>
-                  <th className="text-left py-2">Student #</th>
-                  <th className="text-left py-2">School</th>
-                  <th className="text-left py-2">Level</th>
+                  <th className="text-left py-2 text-gray-700">{t('students.name')}</th>
+                  <th className="text-left py-2 text-gray-700">{t('students.studentNumber')}</th>
+                  <th className="text-left py-2 text-gray-700">{t('nav.schools')}</th>
+                  <th className="text-left py-2 text-gray-700">{t('students.currentLevel')}</th>
                 </tr>
               </thead>
               <tbody>
                 {stats.needAttention.map((student) => (
                   <tr key={student.id} className="border-b">
-                    <td className="py-2">{student.name}</td>
-                    <td className="py-2">{student.studentNumber}</td>
-                    <td className="py-2">{student.schoolName}</td>
+                    <td className="py-2 text-gray-800">{student.name}</td>
+                    <td className="py-2 text-gray-800">{student.studentNumber}</td>
+                    <td className="py-2 text-gray-800">{student.schoolName}</td>
                     <td className="py-2">
                       <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">
-                        {student.level}
+                        {student.levelCode !== 'N/A' ? t(`levels.${student.levelCode}`) : t('students.notAssessed')}
                       </span>
                     </td>
                   </tr>

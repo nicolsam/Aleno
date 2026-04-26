@@ -17,12 +17,10 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
 
-    if (!schoolId) {
-      return NextResponse.json({ error: 'School ID required' }, { status: 400 })
-    }
+    const whereClause = schoolId ? { schoolId } : {}
 
     const students = await prisma.student.findMany({
-      where: { schoolId },
+      where: whereClause,
       include: {
         readingHistory: {
           orderBy: { recordedAt: 'desc' },

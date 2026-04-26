@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
+import { useTranslations, useLocale } from 'next-intl'
+import LanguageSwitcher from '@/components/LanguageSwitcher'
 
 interface School {
   id: string
@@ -12,6 +14,8 @@ interface School {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
+  const t = useTranslations('nav')
+  const locale = useLocale()
   const [schools, setSchools] = useState<School[]>([])
   const [selectedSchool, setSelectedSchool] = useState<string>('')
   const [teacher, setTeacher] = useState<{ name: string; email: string } | null>(null)
@@ -46,19 +50,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const data = await res.json()
       if (res.ok && data.schools) {
         setSchools(data.schools)
-        if (data.schools.length > 0 && !selectedSchool) {
-          setSelectedSchool(data.schools[0].id)
+        const stored = localStorage.getItem('selectedSchool')
+        if (stored && data.schools.find((s: School) => s.id === stored)) {
+          setSelectedSchool(stored)
+        } else if (data.schools.length > 0) {
+          setSelectedSchool('') // Default to "All Schools" explicitly
         }
       }
     }
     fetchSchools()
   }, [mounted])
 
+  // Broadcast school change to other components
   useEffect(() => {
-    if (selectedSchool) {
-      localStorage.setItem('selectedSchool', selectedSchool)
-    }
-  }, [selectedSchool])
+    if (!mounted) return
+    localStorage.setItem('selectedSchool', selectedSchool)
+    window.dispatchEvent(new Event('schoolChanged'))
+  }, [selectedSchool, mounted])
 
   const handleLogout = () => {
     localStorage.removeItem('token')
@@ -67,9 +75,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
+  // Do not show filter on Schools page
+  const showFilter = pathname !== '/dashboard/schools' && schools.length > 0
+
   return (
     <div className="min-h-screen flex">
-      <aside className="w-64 bg-gray-800 text-white min-h-screen">
+      <aside className="w-64 bg-gray-800 text-white min-h-screen relative">
         <div className="p-4">
           <h1 className="text-xl font-bold">Aleno</h1>
           {teacher && mounted && <p className="text-sm text-gray-300 mt-1">{teacher.name}</p>}
@@ -79,24 +90,25 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             href="/dashboard"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard' ? 'bg-gray-700' : ''}`}
           >
-            Dashboard
+            {t('dashboard')}
           </a>
           <a
             href="/dashboard/students"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/students' ? 'bg-gray-700' : ''}`}
           >
-            Students
+            {t('students')}
           </a>
           <a
             href="/dashboard/schools"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
           >
-            Schools
+            {t('schools')}
           </a>
         </nav>
-        <div className="absolute bottom-0 w-64 p-4">
-          <button onClick={handleLogout} className="text-sm text-gray-300 hover:text-white">
-            Logout
+        <div className="absolute bottom-0 w-64 p-4 flex flex-col gap-4">
+          <LanguageSwitcher />
+          <button onClick={handleLogout} className="text-left text-sm text-gray-300 hover:text-white">
+            {t('logout')}
           </button>
         </div>
       </aside>
@@ -108,15 +120,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
         ) : (
           <>
-            {schools.length > 0 && (
+            {showFilter && (
               <div className="mb-6 flex items-center gap-4">
-                <label className="text-sm font-medium text-gray-700">School:</label>
                 <select
                   value={selectedSchool}
                   onChange={(e) => setSelectedSchool(e.target.value)}
                   className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="">All Schools</option>
+                  <option value="">{locale === 'en' ? 'All Schools' : 'Todas as Escolas'}</option>
                   {schools.map((school) => (
                     <option key={school.id} value={school.id}>
                       {school.name}
