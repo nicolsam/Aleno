@@ -331,7 +331,11 @@ export default function StudentsPage() {
             ) : (
               students.map((student) => (
                 <tr key={student.id} className="border-t hover:bg-gray-50 group">
-                  <td className="p-4 text-gray-800">{student.name}</td>
+                  <td className="p-4">
+                    <a href={`/dashboard/students/${student.id}`} className="text-blue-600 hover:underline font-medium">
+                      {student.name}
+                    </a>
+                  </td>
                   <td className="p-4 text-gray-800">{student.studentNumber}</td>
                   <td className="p-4 text-gray-800">{formatClassName(student.class)}</td>
                   <td className="p-4">

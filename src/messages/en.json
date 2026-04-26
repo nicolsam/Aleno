@@ -34,7 +34,15 @@
     "needSchool": "You need to create a school first.",
     "selectSchool": "Select school",
     "noSchool": "No school selected",
-    "notes": "Notes (optional)"
+    "notes": "Notes (optional)",
+    "evolution": "Evolution",
+    "backToStudents": "Back to Students",
+    "readingHistory": "Reading History",
+    "recordedBy": "Recorded by",
+    "noHistory": "No assessments yet.",
+    "progressChart": "Progress Chart",
+    "studentInfo": "Student Information",
+    "school": "School"
   },
   "classes": {
     "title": "Classes",

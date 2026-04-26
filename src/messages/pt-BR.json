@@ -34,7 +34,15 @@
     "needSchool": "Você precisa criar uma escola primeiro.",
     "selectSchool": "Selecionar escola",
     "noSchool": "Nenhuma escola selecionada",
-    "notes": "Observações (opcional)"
+    "notes": "Observações (opcional)",
+    "evolution": "Evolução",
+    "backToStudents": "Voltar para Alunos",
+    "readingHistory": "Histórico de Leitura",
+    "recordedBy": "Registrado por",
+    "noHistory": "Nenhuma avaliação ainda.",
+    "progressChart": "Gráfico de Progresso",
+    "studentInfo": "Informações do Aluno",
+    "school": "Escola"
   },
   "classes": {
     "title": "Turmas",
