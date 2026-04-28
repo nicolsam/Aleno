@@ -22,7 +22,7 @@ test.describe('Aleno E2E Workflow', () => {
     }
 
     await page.fill('input[placeholder*="nome"], input[placeholder*="name"]', 'Test Teacher');
-    await page.fill('input[placeholder*="Email"]', `teacher_${Date.now()}@example.com`);
+    await page.fill('input[type="email"]', `teacher_${Date.now()}@example.com`);
     await page.fill('input[placeholder*="Senha"], input[placeholder*="Password"]', 'password123');
     await page.locator('button[type="submit"]').first().click();
 
@@ -43,7 +43,7 @@ test.describe('Aleno E2E Workflow', () => {
     await page.locator('select').filter({ hasText: /Selecionar escola|Select school/ }).selectOption({ label: 'Test School' });
     await page.locator('select').filter({ hasText: /Selecionar ano|Select grade/ }).selectOption('1º Ano');
     await page.fill('input[placeholder*="Turma"], input[placeholder*="Section"]', 'A');
-    await page.locator('select').filter({ hasText: /Selecionar turno|Select shift/ }).selectOption({ label: /Manhã|Morning/ });
+    await page.locator('select').filter({ hasText: /Selecionar turno|Select shift/ }).selectOption('Morning');
     await page.locator('form button[type="submit"]').click();
     await expect(page.locator('text=1º Ano')).toBeVisible();
 
@@ -57,14 +57,14 @@ test.describe('Aleno E2E Workflow', () => {
     await expect(page.locator('text=John Doe')).toBeVisible();
 
     // 5. Verify Filters
-    await page.locator('div:has-text("Ano/Série"), div:has-text("Grade")').locator('select').selectOption('1º Ano');
+    await page.locator('main select').nth(1).selectOption('1º Ano');
     await expect(page.locator('text=John Doe')).toBeVisible();
 
     await page.fill('input[placeholder="Todos"], input[placeholder="All"]', 'B');
     await expect(page.locator('text=John Doe')).not.toBeVisible();
 
     await page.fill('input[placeholder="Todos"], input[placeholder="All"]', '');
-    await page.locator('div:has-text("Turno"), div:has-text("Shift")').locator('select').selectOption('Morning');
+    await page.locator('main select').nth(2).selectOption('Morning');
     await expect(page.locator('text=John Doe')).toBeVisible();
   });
 });
