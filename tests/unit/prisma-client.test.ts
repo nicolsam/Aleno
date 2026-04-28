@@ -1,0 +1,40 @@
+import { describe, expect, it } from 'vitest'
+import { Prisma, PrismaClient } from '@prisma/client'
+
+describe('generated Prisma client', () => {
+  it('can be imported from @prisma/client', () => {
+    expect(typeof PrismaClient).toBe('function')
+  })
+
+  it('includes the project data models from prisma/schema.prisma', () => {
+    expect(Prisma.ModelName).toEqual({
+      School: 'School',
+      Class: 'Class',
+      Teacher: 'Teacher',
+      UserSession: 'UserSession',
+      AuditLog: 'AuditLog',
+      TeacherSchool: 'TeacherSchool',
+      Student: 'Student',
+      ReadingLevel: 'ReadingLevel',
+      StudentReadingHistory: 'StudentReadingHistory',
+    })
+  })
+
+  it('includes scalar field enums for important query surfaces', () => {
+    expect(Prisma.StudentScalarFieldEnum).toMatchObject({
+      id: 'id',
+      name: 'name',
+      studentNumber: 'studentNumber',
+      schoolId: 'schoolId',
+      classId: 'classId',
+      deletedAt: 'deletedAt',
+    })
+
+    expect(Prisma.ReadingLevelScalarFieldEnum).toMatchObject({
+      id: 'id',
+      name: 'name',
+      code: 'code',
+      order: 'order',
+    })
+  })
+})
