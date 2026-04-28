@@ -5,6 +5,20 @@ export default defineConfig({
   test: {
     environment: 'node',
     include: ['tests/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      include: ['src/**/*.{ts,tsx}'],
+      reporter: ['text', 'html'],
+      reportsDirectory: 'coverage',
+      exclude: [
+        'tests/**',
+        'node_modules/**',
+        '.next/**',
+        'coverage/**',
+        'playwright-report/**',
+        'test-results/**',
+      ],
+    },
   },
   resolve: {
     alias: {
