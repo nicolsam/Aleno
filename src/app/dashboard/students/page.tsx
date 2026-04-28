@@ -17,6 +17,18 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Pencil, Trash2 } from "lucide-react"
 import { getReadingLevelStyle } from '@/lib/reading-levels'
+import { getMonthKey, toInputMonth, fromInputMonth } from '@/lib/monthly-updates'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface ClassRecord {
   id: string
@@ -35,8 +47,13 @@ interface Student {
   class?: ClassRecord
   readingHistory: {
     id: string
+    recordedAt?: string
     readingLevel: { name: string; code: string }
   }[]
+  monthlyUpdateStatus?: 'updated' | 'missing'
+  monthStatus?: 'current' | 'past'
+  selectedMonth?: string
+  latestAssessmentDate?: string | null
 }
 
 interface ReadingLevel {
@@ -61,16 +78,31 @@ export default function StudentsPage() {
   const tCommon = useTranslations('common')
   const tLevels = useTranslations('levels')
   const tErrors = useTranslations('errors')
-  
+
   const [students, setStudents] = useState<Student[]>([])
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [schools, setSchools] = useState<School[]>([])
   const [schoolId, setSchoolId] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState(() => {
+    if (typeof window === 'undefined') return getMonthKey()
+    return new URLSearchParams(window.location.search).get('month') || getMonthKey()
+  })
+
+  /** Max value for the HTML month picker — clamped to the current month. */
+  const maxInputMonth = toInputMonth(getMonthKey())
+
+  const handleMonthChange = (inputValue: string) => {
+    if (!inputValue) {
+      setSelectedMonth(getMonthKey())
+      return
+    }
+    setSelectedMonth(fromInputMonth(inputValue))
+  }
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [error, setError] = useState('')
-  
+
   // Filters
   const [gradeFilter, setGradeFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
@@ -78,7 +110,7 @@ export default function StudentsPage() {
 
   const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', classId: '' })
   const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '' })
-  
+
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null)
 
@@ -88,7 +120,7 @@ export default function StudentsPage() {
       router.push('/login')
       return
     }
-    
+
     const handleSchoolChange = () => {
       const storedSchool = localStorage.getItem('selectedSchool')
       setSchoolId(storedSchool || '')
@@ -104,6 +136,7 @@ export default function StudentsPage() {
       const token = localStorage.getItem('token')
       if (!token) return
 
+      setLoading(true)
       const schoolsRes = await fetch('/api/schools', { headers: { Authorization: `Bearer ${token}` } })
       if (schoolsRes.ok) {
         const schoolsData = await schoolsRes.json()
@@ -122,6 +155,7 @@ export default function StudentsPage() {
       if (gradeFilter) params.append('grade', gradeFilter)
       if (sectionFilter) params.append('section', sectionFilter)
       if (shiftFilter) params.append('shift', shiftFilter)
+      params.append('month', selectedMonth)
 
       const studentsUrl = `/api/students${params.toString() ? `?${params.toString()}` : ''}`
 
@@ -139,7 +173,7 @@ export default function StudentsPage() {
       setLoading(false)
     }
     fetchData()
-  }, [schoolId, gradeFilter, sectionFilter, shiftFilter])
+  }, [schoolId, gradeFilter, sectionFilter, shiftFilter, selectedMonth])
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -176,8 +210,8 @@ export default function StudentsPage() {
     const res = await fetch(`/api/students/${editingStudent.id}`, {
       method: 'PUT',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        name: editingStudent.name, 
+      body: JSON.stringify({
+        name: editingStudent.name,
         studentNumber: editingStudent.studentNumber,
         classId: editingStudent.classId
       }),
@@ -209,7 +243,7 @@ export default function StudentsPage() {
     if (res.ok) {
       const deletedStudent = students.find(s => s.id === studentIdToDelete)
       setStudents(students.filter(s => s.id !== studentIdToDelete))
-      
+
       toast(tCommon('delete'), {
         action: {
           label: tCommon('undo'),
@@ -278,32 +312,54 @@ export default function StudentsPage() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{t('title')}</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
+        <Button onClick={() => setShowModal(true)}>
           {t('add')}
-        </button>
+        </Button>
       </div>
 
       <div className="flex gap-4 mb-6 bg-white p-4 rounded-lg shadow">
-        <div className="flex-1">
-          <label className="block text-sm text-gray-600 mb-1">{tClasses('grade')}</label>
-          <select value={gradeFilter} onChange={e => setGradeFilter(e.target.value)} className="w-full p-2 border rounded">
-            <option value="">{tClasses('all')}</option>
-            {VALID_GRADES.map(g => <option key={g} value={g}>{g}</option>)}
-          </select>
+        <div className="flex-1 space-y-1">
+          <Label>{tClasses('grade')}</Label>
+          <Select value={gradeFilter} onValueChange={(value) => setGradeFilter(value === '__all__' ? '' : value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={tClasses('all')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+              {VALID_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+            </SelectContent>
+          </Select>
         </div>
-        <div className="flex-1">
-          <label className="block text-sm text-gray-600 mb-1">{tClasses('section')}</label>
-          <input type="text" value={sectionFilter} onChange={e => setSectionFilter(e.target.value.toUpperCase())} maxLength={2} className="w-full p-2 border rounded" placeholder={tClasses('all')} />
+        <div className="flex-1 space-y-1">
+          <Label>{tClasses('section')}</Label>
+          <Input
+            type="text"
+            value={sectionFilter}
+            onChange={e => setSectionFilter(e.target.value.toUpperCase())}
+            maxLength={2}
+            placeholder={tClasses('all')}
+          />
         </div>
-        <div className="flex-1">
-          <label className="block text-sm text-gray-600 mb-1">{tClasses('shift')}</label>
-          <select value={shiftFilter} onChange={e => setShiftFilter(e.target.value)} className="w-full p-2 border rounded">
-            <option value="">{tClasses('all')}</option>
-            {VALID_SHIFTS.map(s => <option key={s} value={s}>{tClasses(`shifts.${s}`)}</option>)}
-          </select>
+        <div className="flex-1 space-y-1">
+          <Label>{tClasses('shift')}</Label>
+          <Select value={shiftFilter} onValueChange={(value) => setShiftFilter(value === '__all__' ? '' : value)}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={tClasses('all')} />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+              {VALID_SHIFTS.map(s => <SelectItem key={s} value={s}>{tClasses(`shifts.${s}`)}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex-1 space-y-1">
+          <Label>{t('monthFilter')}</Label>
+          <Input
+            type="month"
+            value={toInputMonth(selectedMonth)}
+            max={maxInputMonth}
+            onChange={(e) => handleMonthChange(e.target.value)}
+          />
         </div>
       </div>
 
@@ -319,13 +375,14 @@ export default function StudentsPage() {
               <th className="text-left p-4 text-gray-700">{t('studentNumber')}</th>
               <th className="text-left p-4 text-gray-700">{tClasses('class')}</th>
               <th className="text-left p-4 text-gray-700">{t('currentLevel')}</th>
+              <th className="text-left p-4 text-gray-700">{t('monthlyUpdate')}</th>
               <th className="text-left p-4 text-gray-700">{t('actions')}</th>
             </tr>
           </thead>
           <tbody>
             {students.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-4 text-center text-gray-700">
+                <td colSpan={6} className="p-4 text-center text-gray-700">
                   {t('noStudents')}
                 </td>
               </tr>
@@ -351,16 +408,29 @@ export default function StudentsPage() {
                     </span>
                   </td>
                   <td className="p-4">
+                    <Badge
+                      variant={student.monthlyUpdateStatus === 'updated' ? 'success' : 'warning'}
+                    >
+                      {student.monthlyUpdateStatus === 'updated'
+                        ? (student.monthStatus === 'current' ? t('monthlyUpdated') : t('monthlyUpdatedPast'))
+                        : (student.monthStatus === 'current' ? t('monthlyMissing') : t('monthlyMissingPast'))}
+                    </Badge>
+                  </td>
+                  <td className="p-4">
                     <div className="flex items-center gap-4">
-                      <button
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
                         onClick={() => {
                           setUpdateLevel({ studentId: student.id, readingLevelId: '', notes: '' })
                         }}
-                        className="text-blue-600 hover:underline text-sm font-medium"
+                        className={`h-auto p-0 ${student.monthlyUpdateStatus === 'missing' ? 'text-amber-700' : 'text-blue-600'
+                          }`}
                       >
                         {t('updateLevel')}
-                      </button>
-                      
+                      </Button>
+
                       <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => setEditingStudent(student)}
@@ -392,42 +462,42 @@ export default function StudentsPage() {
           <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
             <h2 className="text-xl font-bold text-gray-800 mb-4">{t('add')}</h2>
             <form onSubmit={handleCreateStudent} className="space-y-4">
-              <select
-                value={newStudent.classId}
-                onChange={(e) => setNewStudent({ ...newStudent, classId: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-                required
-              >
-                <option value="">{tClasses('selectClass')}</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {formatClassName(c)}
-                  </option>
-                ))}
-              </select>
-              <input
+              <div className="space-y-1">
+                <Label>{tClasses('selectClass')}</Label>
+                <Select value={newStudent.classId} onValueChange={(value) => setNewStudent({ ...newStudent, classId: value })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={tClasses('selectClass')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {formatClassName(c)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Input
                 type="text"
                 placeholder={t('name')}
                 value={newStudent.name}
                 onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
                 required
               />
-              <input
+              <Input
                 type="text"
                 placeholder={t('studentNumber')}
                 value={newStudent.studentNumber}
                 onChange={(e) => setNewStudent({ ...newStudent, studentNumber: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
                 required
               />
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <Button type="submit" className="flex-1">
                   {tCommon('add')}
-                </button>
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded">
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
                   {tCommon('cancel')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -440,42 +510,42 @@ export default function StudentsPage() {
           <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
             <h2 className="text-xl font-bold text-gray-800 mb-4">{t('editStudent')}</h2>
             <form onSubmit={handleUpdateStudent} className="space-y-4">
-              <select
-                value={editingStudent.classId}
-                onChange={(e) => setEditingStudent({ ...editingStudent, classId: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-                required
-              >
-                <option value="">{tClasses('selectClass')}</option>
-                {classes.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {formatClassName(c)}
-                  </option>
-                ))}
-              </select>
-              <input
+              <div className="space-y-1">
+                <Label>{tClasses('selectClass')}</Label>
+                <Select value={editingStudent.classId} onValueChange={(value) => setEditingStudent({ ...editingStudent, classId: value })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={tClasses('selectClass')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {formatClassName(c)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Input
                 type="text"
                 placeholder={t('name')}
                 value={editingStudent.name}
                 onChange={(e) => setEditingStudent({ ...editingStudent, name: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
                 required
               />
-              <input
+              <Input
                 type="text"
                 placeholder={t('studentNumber')}
                 value={editingStudent.studentNumber}
                 onChange={(e) => setEditingStudent({ ...editingStudent, studentNumber: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
                 required
               />
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <Button type="submit" className="flex-1">
                   {tCommon('save')}
-                </button>
-                <button type="button" onClick={() => setEditingStudent(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded">
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setEditingStudent(null)} className="flex-1">
                   {tCommon('cancel')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
@@ -488,33 +558,35 @@ export default function StudentsPage() {
           <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
             <h2 className="text-xl font-bold text-gray-800 mb-4">{t('updateLevel')}</h2>
             <form onSubmit={handleUpdateLevel} className="space-y-4">
-              <select
-                value={updateLevel.readingLevelId}
-                onChange={(e) => setUpdateLevel({ ...updateLevel, readingLevelId: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-                required
-              >
-                <option value="">{tLevels('selectLevel')}</option>
-                {levels.map((level) => (
-                  <option key={level.id} value={level.id}>
-                    {tLevels(level.code)}
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-1">
+                <Label>{tLevels('selectLevel')}</Label>
+                <Select value={updateLevel.readingLevelId} onValueChange={(value) => setUpdateLevel({ ...updateLevel, readingLevelId: value })}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={tLevels('selectLevel')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {levels.map((level) => (
+                      <SelectItem key={level.id} value={level.id}>
+                        {tLevels(level.code)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <textarea
                 placeholder={t('notes')}
                 value={updateLevel.notes}
                 onChange={(e) => setUpdateLevel({ ...updateLevel, notes: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
+                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring"
                 rows={3}
               />
               <div className="flex gap-2">
-                <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
+                <Button type="submit" className="flex-1">
                   {tCommon('save')}
-                </button>
-                <button type="button" onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '' })} className="flex-1 px-4 py-2 border border-gray-300 rounded">
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '' })} className="flex-1">
                   {tCommon('cancel')}
-                </button>
+                </Button>
               </div>
             </form>
           </div>
