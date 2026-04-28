@@ -2,9 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { ArrowLeft, TrendingUp, User, BookOpen } from 'lucide-react'
+import { getReadingLevelStyle } from '@/lib/reading-levels'
 
 interface ClassRecord {
   id: string
@@ -34,16 +36,6 @@ interface ReadingLevel {
   code: string
   name: string
   order: number
-}
-
-const LEVEL_COLORS: Record<string, string> = {
-  DNI: '#EF4444',
-  LO: '#F97316',
-  SO: '#EAB308',
-  RW: '#84CC16',
-  RS: '#22C55E',
-  RTS: '#14B8A6',
-  RTF: '#06B6D4',
 }
 
 export default function StudentDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -174,9 +166,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     return (
       <div className="text-center py-12">
         <p className="text-gray-700">{tErrors('internalError')}</p>
-        <a href="/dashboard/students" className="text-blue-600 hover:underline mt-2 inline-block">
+        <Link href="/dashboard/students" className="text-blue-600 hover:underline mt-2 inline-block">
           {t('backToStudents')}
-        </a>
+        </Link>
       </div>
     )
   }
@@ -184,13 +176,13 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   return (
     <div className="max-w-4xl mx-auto">
       {/* Back link */}
-      <a
+      <Link
         href="/dashboard/students"
         className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-6 text-sm"
       >
         <ArrowLeft size={16} />
         {t('backToStudents')}
-      </a>
+      </Link>
 
       {/* Header Card */}
       <div className="bg-white rounded-lg shadow p-6 mb-6">
@@ -213,8 +205,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
               <span
                 className="px-3 py-1.5 rounded-full text-sm font-semibold"
                 style={{
-                  backgroundColor: `${LEVEL_COLORS[currentLevel.readingLevel.code] || '#6B7280'}20`,
-                  color: LEVEL_COLORS[currentLevel.readingLevel.code] || '#6B7280',
+                  backgroundColor: getReadingLevelStyle(currentLevel.readingLevel.code).backgroundColor,
+                  color: getReadingLevelStyle(currentLevel.readingLevel.code).textColor,
                 }}
               >
                 {tLevels(currentLevel.readingLevel.code)}
@@ -302,7 +294,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   {/* Timeline dot */}
                   <div
                     className="absolute left-2.5 w-3 h-3 rounded-full border-2 border-white"
-                    style={{ backgroundColor: LEVEL_COLORS[entry.readingLevel.code] || '#6B7280', top: '6px' }}
+                    style={{ backgroundColor: getReadingLevelStyle(entry.readingLevel.code).color, top: '6px' }}
                   />
 
                   <div className="flex-1 bg-gray-50 rounded-lg p-4">
@@ -310,8 +302,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                       <span
                         className="px-2 py-0.5 rounded text-xs font-semibold"
                         style={{
-                          backgroundColor: `${LEVEL_COLORS[entry.readingLevel.code] || '#6B7280'}20`,
-                          color: LEVEL_COLORS[entry.readingLevel.code] || '#6B7280',
+                          backgroundColor: getReadingLevelStyle(entry.readingLevel.code).backgroundColor,
+                          color: getReadingLevelStyle(entry.readingLevel.code).textColor,
                         }}
                       >
                         {tLevels(entry.readingLevel.code)}

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
+import { getReadingLevelStyle } from '@/lib/reading-levels'
 
 interface Stats {
   totalStudents: number
@@ -13,8 +14,6 @@ interface Stats {
   mostCommonLevel: string | null
   improvedThisMonth: number
 }
-
-const COLORS = ['#EF4444', '#F97316', '#EAB308', '#84CC16', '#22C55E', '#14B8A6', '#06B6D4']
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -112,7 +111,7 @@ export default function DashboardPage() {
                 outerRadius={100}
               >
                 {stats.distribution.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${index}`} fill={getReadingLevelStyle(stats.distribution[index]?.level).color} />
                 ))}
               </Pie>
               <Tooltip />
@@ -155,7 +154,13 @@ export default function DashboardPage() {
                     <td className="py-2 text-gray-800">{student.studentNumber}</td>
                     <td className="py-2 text-gray-800">{student.schoolName}</td>
                     <td className="py-2">
-                      <span className="px-2 py-1 bg-red-100 text-red-700 rounded text-sm">
+                      <span
+                        className="px-2 py-1 rounded text-sm"
+                        style={{
+                          backgroundColor: getReadingLevelStyle(student.levelCode).backgroundColor,
+                          color: getReadingLevelStyle(student.levelCode).textColor,
+                        }}
+                      >
                         {student.levelCode !== 'N/A' ? t(`levels.${student.levelCode}`) : t('students.notAssessed')}
                       </span>
                     </td>

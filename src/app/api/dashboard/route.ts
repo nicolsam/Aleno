@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
+import { isAttentionReadingLevel } from '@/lib/reading-levels'
 
 export async function GET(request: Request) {
   try {
@@ -70,9 +71,8 @@ export async function GET(request: Request) {
       }
     })
 
-    const needAttentionIds = ['DNI', 'LO']
     const needAttention = students
-      .filter((s) => s.readingHistory[0] && needAttentionIds.includes(s.readingHistory[0].readingLevel.code))
+      .filter((s) => isAttentionReadingLevel(s.readingHistory[0]?.readingLevel.code))
       .map((s) => ({
         id: s.id,
         name: s.name,
