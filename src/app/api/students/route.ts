@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server'
+import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
+import {
+  getLatestAssessmentDate,
+  hasMonthlyReadingUpdate,
+  resolveMonthInfo,
+} from '@/lib/monthly-updates'
 
 export async function GET(request: Request) {
   try {
@@ -15,6 +21,7 @@ export async function GET(request: Request) {
     const grade = searchParams.get('grade')
     const section = searchParams.get('section')
     const shift = searchParams.get('shift')
+    const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
 
     let validSchoolIds: string[] = []
 
@@ -30,7 +37,7 @@ export async function GET(request: Request) {
       validSchoolIds = ts.map(t => t.schoolId)
     }
 
-    const classFilters: any = { deletedAt: null }
+    const classFilters: Prisma.ClassWhereInput = { deletedAt: null }
     if (grade) classFilters.grade = grade
     if (section) classFilters.section = section
     if (shift) classFilters.shift = shift
@@ -46,13 +53,22 @@ export async function GET(request: Request) {
         class: true,
         readingHistory: {
           orderBy: { recordedAt: 'desc' },
-          take: 1,
           include: { readingLevel: true },
         },
       },
     })
 
-    return NextResponse.json({ students })
+    const studentsWithMonthlyStatus = students.map((student) => ({
+      ...student,
+      monthlyUpdateStatus: hasMonthlyReadingUpdate(student.readingHistory, selectedMonthRange)
+        ? 'updated'
+        : 'missing',
+      monthStatus,
+      selectedMonth,
+      latestAssessmentDate: getLatestAssessmentDate(student.readingHistory),
+    }))
+
+    return NextResponse.json({ students: studentsWithMonthlyStatus })
   } catch (error) {
     console.error('Students error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

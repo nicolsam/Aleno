@@ -77,7 +77,14 @@ describe('API: /api/students', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.students).toEqual(students)
+    expect(data.students).toEqual([
+      expect.objectContaining({
+        id: students[0].id,
+        name: students[0].name,
+        monthlyUpdateStatus: 'missing',
+        latestAssessmentDate: null,
+      }),
+    ])
     expect(mockFindTeacherSchool).toHaveBeenCalledWith({
       where: { teacherId_schoolId: { teacherId: 'teacher-1', schoolId: 'school-1' } },
     })
@@ -93,6 +100,50 @@ describe('API: /api/students', () => {
         },
       }),
     }))
+  })
+
+  it('GET marks students with monthly update status for the selected month', async () => {
+    mockFindStudents.mockResolvedValue([
+      {
+        id: 'student-1',
+        name: 'Student 1',
+        readingHistory: [{ id: 'history-1', recordedAt: new Date('2026-04-10T12:00:00.000Z') }],
+      },
+      {
+        id: 'student-2',
+        name: 'Student 2',
+        readingHistory: [{ id: 'history-2', recordedAt: new Date('2026-03-10T12:00:00.000Z') }],
+      },
+      { id: 'student-3', name: 'Student 3', readingHistory: [] },
+    ])
+
+    const response = await GET(createRequest('http://localhost/api/students?month=04/2026'))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.students).toMatchObject([
+      {
+        id: 'student-1',
+        monthlyUpdateStatus: 'updated',
+        monthStatus: expect.stringMatching(/current|past/),
+        selectedMonth: '04/2026',
+        latestAssessmentDate: '2026-04-10T12:00:00.000Z',
+      },
+      {
+        id: 'student-2',
+        monthlyUpdateStatus: 'missing',
+        monthStatus: expect.stringMatching(/current|past/),
+        selectedMonth: '04/2026',
+        latestAssessmentDate: '2026-03-10T12:00:00.000Z',
+      },
+      {
+        id: 'student-3',
+        monthlyUpdateStatus: 'missing',
+        monthStatus: expect.stringMatching(/current|past/),
+        selectedMonth: '04/2026',
+        latestAssessmentDate: null,
+      },
+    ])
   })
 
   it('GET returns 401 for invalid tokens', async () => {

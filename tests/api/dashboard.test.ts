@@ -39,7 +39,7 @@ const levels = [
   { id: 'level-rtf', code: 'RTF', name: 'Reads Text Fluently', order: 7 },
 ]
 
-function createStudent(id: string, code: string) {
+function createStudent(id: string, code: string, recordedAt = new Date('2026-04-10T12:00:00.000Z')) {
   const level = levels.find((item) => item.code === code)!
 
   return {
@@ -47,7 +47,7 @@ function createStudent(id: string, code: string) {
     name: `Student ${id}`,
     studentNumber: id,
     school: { name: 'Test School' },
-    readingHistory: [{ readingLevelId: level.id, readingLevel: level }],
+    readingHistory: [{ readingLevelId: level.id, readingLevel: level, recordedAt }],
   }
 }
 
@@ -99,5 +99,54 @@ describe('API: /api/dashboard GET', () => {
     expect(response.status).toBe(200)
     expect(data.needAttention).toEqual([])
     expect(data.improvedThisMonth).toBe(0)
+  })
+
+  it('returns monthly update counts for the selected month', async () => {
+    mockFindStudents.mockResolvedValue([
+      createStudent('student-1', 'RW', new Date('2026-04-10T12:00:00.000Z')),
+      createStudent('student-2', 'RS', new Date('2026-03-10T12:00:00.000Z')),
+      { ...createStudent('student-3', 'RTS'), readingHistory: [] },
+    ])
+
+    const request = new Request('http://localhost/api/dashboard?month=04/2026', {
+      headers: { authorization: 'Bearer valid-token' },
+    })
+    const response = await getDashboard(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.monthlyUpdates).toMatchObject({
+      month: '04/2026',
+      monthStatus: expect.stringMatching(/current|past/),
+      totalStudents: 3,
+      updatedCount: 1,
+      missingCount: 2,
+    })
+    expect(data.monthlyUpdates.missingStudents.map((student: { id: string }) => student.id)).toEqual([
+      'student-2',
+      'student-3',
+    ])
+  })
+
+  it('defaults monthly update counts to the current month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-05-15T12:00:00.000Z'))
+    mockFindStudents.mockResolvedValue([
+      createStudent('student-1', 'RW', new Date('2026-05-10T12:00:00.000Z')),
+    ])
+
+    const request = new Request('http://localhost/api/dashboard', {
+      headers: { authorization: 'Bearer valid-token' },
+    })
+    const response = await getDashboard(request)
+    const data = await response.json()
+
+    vi.useRealTimers()
+
+    expect(response.status).toBe(200)
+    expect(data.monthlyUpdates.month).toBe('05/2026')
+    expect(data.monthlyUpdates.monthStatus).toBe('current')
+    expect(data.monthlyUpdates.updatedCount).toBe(1)
+    expect(data.monthlyUpdates.missingCount).toBe(0)
   })
 })
