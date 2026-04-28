@@ -12,11 +12,30 @@ model School {
   address   String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   teachers  TeacherSchool[]
   students  Student[]
+  classes   Class[]
 
   @@map("schools")
+}
+
+model Class {
+  id        String   @id @default(uuid())
+  grade     String
+  section   String
+  shift     String
+  schoolId  String   @map("school_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  school    School    @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  students  Student[]
+
+  @@unique([schoolId, grade, section, shift])
+  @@map("classes")
 }
 
 model Teacher {
@@ -82,10 +101,13 @@ model Student {
   name          String
   studentNumber String   @map("student_number")
   schoolId      String   @map("school_id")
+  classId       String   @map("class_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
 
   school           School                   @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  class            Class                    @relation(fields: [classId], references: [id], onDelete: Cascade)
   readingHistory   StudentReadingHistory[]
 
   @@unique([studentNumber, schoolId])

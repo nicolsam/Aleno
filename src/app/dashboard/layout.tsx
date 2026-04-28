@@ -92,8 +92,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // Do not show filter on Schools or Admin pages
-  const showFilter = pathname !== '/dashboard/schools' && !pathname.startsWith('/dashboard/admin') && schools.length > 0
+  // Only show school filter on pages that need it
+  const filterPages = ['/dashboard', '/dashboard/students', '/dashboard/classes']
+  const showFilter = filterPages.includes(pathname) && schools.length > 0
 
   return (
     <div className="min-h-screen flex">
@@ -114,6 +115,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/students' ? 'bg-gray-700' : ''}`}
           >
             {t('students')}
+          </a>
+          <a
+            href="/dashboard/classes"
+            className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/classes' ? 'bg-gray-700' : ''}`}
+          >
+            {t('classes')}
           </a>
           <a
             href="/dashboard/schools"

@@ -4,6 +4,11 @@
     "cancel": "Cancel",
     "save": "Save",
     "add": "Add",
+    "edit": "Edit",
+    "delete": "Delete",
+    "undo": "Undo",
+    "confirmDelete": "Are you sure you want to delete this?",
+    "deleteWarning": "This action cannot be undone.",
     "createSchool": "Create a School",
     "addSchool": "Add School"
   },
@@ -11,12 +16,14 @@
     "dashboard": "Dashboard",
     "students": "Students",
     "schools": "Schools",
+    "classes": "Classes",
     "logout": "Logout",
     "language": "Language"
   },
   "students": {
     "title": "Students",
     "add": "Add Student",
+    "editStudent": "Edit Student",
     "name": "Name",
     "studentNumber": "Student Number",
     "currentLevel": "Current Level",
@@ -27,20 +34,53 @@
     "needSchool": "You need to create a school first.",
     "selectSchool": "Select school",
     "noSchool": "No school selected",
-    "notes": "Notes (optional)"
+    "notes": "Notes (optional)",
+    "evolution": "Evolution",
+    "backToStudents": "Back to Students",
+    "readingHistory": "Reading History",
+    "recordedBy": "Recorded by",
+    "noHistory": "No assessments yet.",
+    "progressChart": "Progress Chart",
+    "studentInfo": "Student Information",
+    "school": "School"
+  },
+  "classes": {
+    "title": "Classes",
+    "add": "Add Class",
+    "editClass": "Edit Class",
+    "grade": "Grade",
+    "section": "Section",
+    "shift": "Shift",
+    "school": "School",
+    "noClasses": "No classes yet. Add your first class.",
+    "needSchool": "You need to create a school first.",
+    "selectSchool": "Select a school",
+    "selectGrade": "Select a grade",
+    "selectShift": "Select a shift",
+    "selectClass": "Select a class",
+    "class": "Class",
+    "all": "All",
+    "shifts": {
+      "Morning": "Morning",
+      "Afternoon": "Afternoon",
+      "Night": "Night"
+    }
   },
   "schools": {
     "title": "Schools",
     "add": "Add School",
+    "editSchool": "Edit School",
     "name": "School name",
     "address": "Address",
+    "addressOptional": "Address (optional)",
     "noAddress": "No address",
     "noSchools": "No schools yet. Add your first school."
   },
   "dashboard": {
     "title": "Dashboard",
     "totalStudents": "Total Students",
-    "averageLevel": "Average Level",
+    "mostCommonLevel": "Most Common Level",
+    "improvedThisMonth": "Improved This Month",
     "needAttention": "Need Attention",
     "distribution": "Distribution by Level",
     "byLevel": "Students by Level",
@@ -74,11 +114,12 @@
     "selectSchool": "Please select a school first",
     "selectLevel": "Please select a reading level",
     "failedCreate": "Failed to create student",
-    "failedUpdate": "Failed to update reading level",
+    "failedUpdate": "Failed to update",
     "failedConnect": "Failed to connect to server",
     "invalidCredentials": "Invalid credentials",
     "emailExists": "Email already exists",
     "missingFields": "Missing fields",
-    "internalError": "Internal error"
+    "internalError": "Internal error",
+    "failedDelete": "Failed to delete"
   }
 }

@@ -7,8 +7,8 @@ export async function GET(request: Request) {
     const auth = await verifyAdmin(request)
     if (auth.error) return auth.error
 
-    const totalSchools = await prisma.school.count()
-    const totalStudents = await prisma.student.count()
+    const totalSchools = await prisma.school.count({ where: { deletedAt: null } })
+    const totalStudents = await prisma.student.count({ where: { deletedAt: null, school: { deletedAt: null } } })
     const totalAssessments = await prisma.studentReadingHistory.count()
     
     // Active sessions within last 5 minutes
