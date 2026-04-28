@@ -1,0 +1,182 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+
+const {
+  mockVerifyToken,
+  mockFindTeacherSchools,
+  mockFindTeacherSchool,
+  mockFindStudents,
+  mockFindClass,
+  mockFindStudent,
+  mockCreateStudent,
+  mockLogAction,
+} = vi.hoisted(() => ({
+  mockVerifyToken: vi.fn(),
+  mockFindTeacherSchools: vi.fn(),
+  mockFindTeacherSchool: vi.fn(),
+  mockFindStudents: vi.fn(),
+  mockFindClass: vi.fn(),
+  mockFindStudent: vi.fn(),
+  mockCreateStudent: vi.fn(),
+  mockLogAction: vi.fn(),
+}))
+
+vi.mock('@/lib/auth', () => ({
+  verifyToken: mockVerifyToken,
+}))
+
+vi.mock('@/lib/audit', () => ({
+  logAction: mockLogAction,
+}))
+
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    teacherSchool: {
+      findMany: mockFindTeacherSchools,
+      findUnique: mockFindTeacherSchool,
+    },
+    student: {
+      findMany: mockFindStudents,
+      findUnique: mockFindStudent,
+      create: mockCreateStudent,
+    },
+    class: { findUnique: mockFindClass },
+  },
+}))
+
+import { GET, POST } from '@/app/api/students/route'
+
+function createRequest(url: string, body?: unknown, token = 'valid-token') {
+  return new Request(url, {
+    method: body ? 'POST' : 'GET',
+    headers: {
+      authorization: `Bearer ${token}`,
+      'content-type': 'application/json',
+      'x-forwarded-for': '127.0.0.1',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  })
+}
+
+describe('API: /api/students', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockVerifyToken.mockReturnValue({ id: 'teacher-1', email: 'teacher@test.com' })
+    mockFindTeacherSchools.mockResolvedValue([{ schoolId: 'school-1' }])
+    mockFindTeacherSchool.mockResolvedValue({ teacherId: 'teacher-1', schoolId: 'school-1' })
+    mockLogAction.mockResolvedValue(undefined)
+  })
+
+  it('GET lists visible students with optional class filters', async () => {
+    const students = [{ id: 'student-1', name: 'Student 1' }]
+    mockFindStudents.mockResolvedValue(students)
+
+    const response = await GET(createRequest(
+      'http://localhost/api/students?schoolId=school-1&grade=1%C2%BA%20Ano&section=A&shift=Morning'
+    ))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.students).toEqual(students)
+    expect(mockFindTeacherSchool).toHaveBeenCalledWith({
+      where: { teacherId_schoolId: { teacherId: 'teacher-1', schoolId: 'school-1' } },
+    })
+    expect(mockFindStudents).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({
+        schoolId: { in: ['school-1'] },
+        deletedAt: null,
+        class: {
+          deletedAt: null,
+          grade: '1º Ano',
+          section: 'A',
+          shift: 'Morning',
+        },
+      }),
+    }))
+  })
+
+  it('GET returns 401 for invalid tokens', async () => {
+    mockVerifyToken.mockReturnValue(null)
+
+    const response = await GET(createRequest('http://localhost/api/students', undefined, 'bad-token'))
+    const data = await response.json()
+
+    expect(response.status).toBe(401)
+    expect(data.error).toBe('Invalid token')
+    expect(mockFindStudents).not.toHaveBeenCalled()
+  })
+
+  it('POST creates a student in an accessible class', async () => {
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1' })
+    mockFindStudent.mockResolvedValue(null)
+    mockCreateStudent.mockResolvedValue({ id: 'student-1', name: 'Student 1', classId: 'class-1' })
+
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+      studentNumber: '123',
+      classId: 'class-1',
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.student.id).toBe('student-1')
+    expect(mockCreateStudent).toHaveBeenCalledWith({
+      data: {
+        name: 'Student 1',
+        studentNumber: '123',
+        schoolId: 'school-1',
+        classId: 'class-1',
+      },
+      include: { class: true },
+    })
+    expect(mockLogAction).toHaveBeenCalledWith(
+      'teacher-1',
+      'CREATE_STUDENT',
+      { studentId: 'student-1', name: 'Student 1' },
+      '127.0.0.1'
+    )
+  })
+
+  it('POST rejects missing required fields', async () => {
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.error).toBe('Missing required fields')
+    expect(mockCreateStudent).not.toHaveBeenCalled()
+  })
+
+  it('POST rejects duplicate student numbers in the same school', async () => {
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1' })
+    mockFindStudent.mockResolvedValue({ id: 'existing-student' })
+
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+      studentNumber: '123',
+      classId: 'class-1',
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.error).toBe('Student number exists')
+    expect(mockCreateStudent).not.toHaveBeenCalled()
+  })
+
+  it('POST rejects classes outside the teacher school access', async () => {
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-2' })
+    mockFindTeacherSchool.mockResolvedValue(null)
+
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+      studentNumber: '123',
+      classId: 'class-1',
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Forbidden')
+    expect(mockCreateStudent).not.toHaveBeenCalled()
+  })
+})

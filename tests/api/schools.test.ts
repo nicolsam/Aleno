@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { PUT, DELETE, PATCH } from '@/app/api/schools/[id]/route' // Actually PATCH is in [id]/restore/route.ts
+import { PUT, DELETE } from '@/app/api/schools/[id]/route'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 
