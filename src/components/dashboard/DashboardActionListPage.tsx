@@ -41,7 +41,7 @@ import {
 } from '@/lib/monthly-updates'
 import { getReadingLevelStyle, isAttentionReadingLevel } from '@/lib/reading-levels'
 
-type ActionListKind = 'need-attention' | 'missing-updates'
+type ActionListKind = 'need-attention' | 'missing-updates' | 'improved'
 
 interface School {
   id: string
@@ -79,6 +79,7 @@ interface ReadingLevel {
 
 interface DashboardStats {
   needAttention: AttentionStudent[]
+  improved: AttentionStudent[]
   monthlyUpdates: {
     month: string
     missingStudents: MissingUpdateStudent[]
@@ -126,11 +127,16 @@ export default function DashboardActionListPage({
   const availableMonths = getAvailableMonthOptions(selectedAcademicYear)
   const maxAssessmentDate = getDefaultAssessmentDateForMonth(getMonthKey())
   const isNeedAttention = kind === 'need-attention'
+  const isImproved = kind === 'improved'
   const title = isNeedAttention
-    ? t('dashboard.studentsAttention')
-    : t('dashboard.studentsMissingMonthlyUpdate')
+    ? t('students.needAttention')
+    : isImproved
+    ? t('students.improved')
+    : t('students.missingMonthlyUpdates')
   const emptyMessage = isNeedAttention
     ? t('dashboard.noStudentsNeedAttention')
+    : isImproved
+    ? t('dashboard.noStudentsImproved')
     : t('dashboard.noStudentsMissingMonthlyUpdate')
 
   const backHref = from === 'dashboard' ? '/dashboard' : '/dashboard/students'
@@ -284,8 +290,10 @@ export default function DashboardActionListPage({
     }
   }
 
-  const students = isNeedAttention
+  const students = kind === 'need-attention'
     ? stats?.needAttention || []
+    : kind === 'improved'
+    ? stats?.improved || []
     : stats?.monthlyUpdates.missingStudents || []
   if (loading) {
     return <ActionListSkeleton />
@@ -370,9 +378,9 @@ export default function DashboardActionListPage({
                     <th className="text-left p-4 text-gray-700">{t('students.name')}</th>
                     <th className="text-left p-4 text-gray-700">{t('students.studentNumber')}</th>
                     <th className="text-left p-4 text-gray-700">{t('nav.schools')}</th>
-                    <th className="text-left p-4 text-gray-700">{t('students.currentLevel')}</th>
-                    {!isNeedAttention && (
-                      <th className="text-left p-4 text-gray-700">{t('students.latestAssessment')}</th>
+                    <th className="text-left p-4 text-gray-700">{t('students.readingLevel')}</th>
+                    {(!isNeedAttention && !isImproved) && (
+                      <th className="text-left p-4 text-gray-700">{t('students.latestUpdate')}</th>
                     )}
                     <th className="text-left p-4 text-gray-700">{t('students.actions')}</th>
                   </tr>
@@ -400,7 +408,7 @@ export default function DashboardActionListPage({
                             : t('students.notAssessed')}
                         </span>
                       </td>
-                      {!isNeedAttention && (
+                      {(!isNeedAttention && !isImproved) && (
                         <td className="p-4 text-gray-800">
                           {(student as MissingUpdateStudent).latestAssessmentDate
                             ? new Date((student as MissingUpdateStudent).latestAssessmentDate!).toLocaleDateString()

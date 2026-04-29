@@ -28,7 +28,10 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     const history = await prisma.studentReadingHistory.findMany({
       where: { studentId: id },
-      orderBy: { recordedAt: 'desc' },
+      orderBy: [
+        { recordedAt: 'desc' },
+        { createdAt: 'desc' },
+      ],
       include: {
         readingLevel: true,
         teacher: { select: { name: true } },

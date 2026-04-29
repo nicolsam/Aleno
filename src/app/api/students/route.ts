@@ -77,7 +77,10 @@ export async function GET(request: Request) {
           orderBy: { startedAt: 'desc' },
         },
         readingHistory: {
-          orderBy: { recordedAt: 'desc' },
+          orderBy: [
+            { recordedAt: 'desc' },
+            { createdAt: 'desc' },
+          ],
           include: { readingLevel: true },
         },
       },

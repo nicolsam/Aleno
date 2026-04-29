@@ -86,12 +86,10 @@ export async function GET(request: Request) {
           orderBy: { startedAt: 'desc' },
         },
         readingHistory: {
-          where: {
-            enrollment: {
-              class: { academicYear: selectedAcademicYear },
-            },
-          },
-          orderBy: { recordedAt: 'desc' },
+          orderBy: [
+            { recordedAt: 'desc' },
+            { createdAt: 'desc' },
+          ],
           include: { readingLevel: true },
         },
         school: true,
@@ -143,26 +141,34 @@ export async function GET(request: Request) {
     const mostCommon = distribution.reduce((best, d) => d.count > best.count ? d : best, distribution[0])
     const mostCommonLevel = mostCommon && mostCommon.count > 0 ? mostCommon.level : null
 
-    // Improved this month: students whose latest level is higher than their previous level,
-    // where the latest assessment was recorded this month
-    const now = new Date()
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const improvedStudents = students
+      .filter((student) => {
+        const history = student.readingHistory
+        // Assessment for the selected month
+        const currentMonthAssessment = history.find(entry => 
+          new Date(entry.recordedAt) >= selectedMonthRange.start &&
+          new Date(entry.recordedAt) <= selectedMonthRange.end
+        )
+        if (!currentMonthAssessment) return false
 
-    const improvedThisMonth = students.reduce((count, student) => {
-      const history = student.readingHistory
-      if (history.length >= 2) {
-        const latest = history[0]
-        const previous = history[1]
-        if (
-          new Date(latest.recordedAt) >= startOfMonth &&
-          latest.readingLevel.order > previous.readingLevel.order
-        ) {
-          return count + 1
-        }
-      }
-
-      return count
-    }, 0)
+        // Find the most recent assessment BEFORE this month's assessment
+        const previousAssessment = history.find(entry => 
+          new Date(entry.recordedAt) < selectedMonthRange.start
+        )
+        
+        // If there's a previous assessment, check if the current one is an improvement
+        return previousAssessment && currentMonthAssessment.readingLevel.order > previousAssessment.readingLevel.order
+      })
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        studentNumber: s.studentNumber,
+        classId: s.classId,
+        schoolName: s.enrollments?.[0]?.class.school.name || s.school.name,
+        level: s.readingHistory[0]?.readingLevel.name || 'Not assessed',
+        levelCode: s.readingHistory[0]?.readingLevel.code || 'N/A',
+        latestAssessmentDate: getLatestAssessmentDate(s.readingHistory),
+      }))
 
     return NextResponse.json({
       totalStudents: students.length,
@@ -170,7 +176,8 @@ export async function GET(request: Request) {
       byLevel: distribution,
       needAttention,
       mostCommonLevel,
-      improvedThisMonth,
+      improved: improvedStudents,
+      improvedCount: improvedStudents.length,
       monthlyUpdates: {
         month: selectedMonth,
         monthStatus,

@@ -28,6 +28,8 @@
     "name": "Nome",
     "studentNumber": "Número do Aluno",
     "currentLevel": "Nível Atual",
+    "readingLevel": "Nível de Leitura",
+    "latestUpdate": "Última Atualização",
     "actions": "Ações",
     "updateLevel": "Atualizar Nível",
     "notAssessed": "Não avaliado",
@@ -54,8 +56,10 @@
     "assessmentDate": "Data da avaliação",
     "needAttention": "Precisam de Atenção",
     "missingMonthlyUpdates": "Atualizações Mensais Pendentes",
+    "improved": "Alunos que Evoluíram",
     "openNeedAttention": "Abrir alunos que precisam de atenção",
-    "openMissingUpdates": "Abrir atualizações mensais pendentes"
+    "openMissingUpdates": "Abrir atualizações mensais pendentes",
+    "openImproved": "Abrir alunos que evoluíram"
   },
   "classes": {
     "title": "Turmas",
@@ -108,11 +112,14 @@
     "pastMonthInfoDescription": "{count} aluno(s) não receberam atualização em {month}.",
     "reviewMonthlyUpdates": "Revisar alunos",
     "studentsMissingMonthlyUpdatePast": "Alunos sem atualização em {month}",
-    "openStudentsAttention": "Abrir alunos que precisam de atenção",
+    "openNeedAttention": "Abrir alunos que precisam de atenção",
     "openMissingMonthlyUpdates": "Abrir atualizações mensais pendentes",
+    "openImproved": "Abrir alunos que evoluíram",
+    "noStudentsImproved": "Nenhum aluno evoluiu para estes filtros.",
     "backToDashboard": "Voltar para o Painel",
     "noStudentsNeedAttention": "Nenhum aluno precisa de atenção para estes filtros.",
     "noStudentsMissingMonthlyUpdate": "Nenhum aluno está com atualização mensal pendente para estes filtros.",
+    "noStudentsImproved": "Nenhum aluno evoluiu para estes filtros.",
     "noData": "Nenhum aluno ainda. Adicione alunos para ver estatísticas."
   },
   "auth": {

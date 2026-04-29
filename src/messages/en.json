@@ -28,6 +28,8 @@
     "name": "Name",
     "studentNumber": "Student Number",
     "currentLevel": "Current Level",
+    "readingLevel": "Reading Level",
+    "latestUpdate": "Latest Update",
     "actions": "Actions",
     "updateLevel": "Update Level",
     "notAssessed": "Not assessed",
@@ -54,8 +56,10 @@
     "assessmentDate": "Assessment date",
     "needAttention": "Need Attention",
     "missingMonthlyUpdates": "Missing Monthly Updates",
+    "improved": "Students who Improved",
     "openNeedAttention": "Open students needing attention",
-    "openMissingUpdates": "Open missing monthly updates"
+    "openMissingUpdates": "Open missing monthly updates",
+    "openImproved": "Open students who improved"
   },
   "classes": {
     "title": "Classes",
@@ -108,11 +112,14 @@
     "pastMonthInfoDescription": "{count} student(s) did not receive an update in {month}.",
     "reviewMonthlyUpdates": "Review students",
     "studentsMissingMonthlyUpdatePast": "Students without updates in {month}",
-    "openStudentsAttention": "Open students needing attention",
+    "openNeedAttention": "Open students needing attention",
     "openMissingMonthlyUpdates": "Open missing monthly updates",
+    "openImproved": "Open students who improved",
+    "noStudentsImproved": "No students improved for these filters.",
     "backToDashboard": "Back to Dashboard",
     "noStudentsNeedAttention": "No students need attention for these filters.",
     "noStudentsMissingMonthlyUpdate": "No students are missing monthly updates for these filters.",
+    "noStudentsImproved": "No students improved for these filters.",
     "noData": "No students yet. Add students to see statistics."
   },
   "auth": {

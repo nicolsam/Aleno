@@ -349,6 +349,11 @@ export default function StudentsPage() {
     return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)}) - ${c.academicYear}`
   }
 
+
+  const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId })
+  const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })
+  const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId })
+
   if (loading) {
     return <StudentsSkeleton />
   }
@@ -365,7 +370,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div>
+    <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{t('title')}</h1>
         <Button onClick={() => setShowModal(true)}>
@@ -465,8 +470,8 @@ export default function StudentsPage() {
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <Link href={buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })}>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <Link href={needAttentionHref}>
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -483,7 +488,7 @@ export default function StudentsPage() {
             </CardContent>
           </Card>
         </Link>
-        <Link href={buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId })}>
+        <Link href={missingUpdatesHref}>
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -496,6 +501,34 @@ export default function StudentsPage() {
             <CardContent>
               <p className="text-3xl font-bold text-amber-600">
                 {students.filter((s) => s.monthlyUpdateStatus === 'missing').length}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={improvedHref}>
+          <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('improved')}
+                </CardTitle>
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-green-600">
+                {students.filter((s) => {
+                  const history = s.readingHistory || []
+                  const currentMonthAssessment = history.find(entry => {
+                    const d = new Date(entry.recordedAt!)
+                    const start = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]) - 1, 1)
+                    const end = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]), 0)
+                    return d >= start && d <= end
+                  })
+                  if (!currentMonthAssessment) return false
+                  const previousAssessment = history.find(entry => new Date(entry.recordedAt!) < new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]) - 1, 1))
+                  return previousAssessment && currentMonthAssessment.readingLevel.order > previousAssessment.readingLevel.order
+                }).length}
               </p>
             </CardContent>
           </Card>
