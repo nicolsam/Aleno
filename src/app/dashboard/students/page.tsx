@@ -519,15 +519,24 @@ export default function StudentsPage() {
               <p className="text-3xl font-bold text-green-600">
                 {students.filter((s) => {
                   const history = s.readingHistory || []
-                  const currentMonthAssessment = history.find(entry => {
+                  const assessmentsInMonth = history.filter(entry => {
                     const d = new Date(entry.recordedAt!)
                     const start = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]) - 1, 1)
                     const end = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]), 0)
                     return d >= start && d <= end
                   })
-                  if (!currentMonthAssessment) return false
-                  const previousAssessment = history.find(entry => new Date(entry.recordedAt!) < new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]) - 1, 1))
-                  return previousAssessment && currentMonthAssessment.readingLevel.order > previousAssessment.readingLevel.order
+                  if (assessmentsInMonth.length === 0) return false
+
+                  return assessmentsInMonth.some(current => {
+                    const previous = history.find(entry => {
+                      const dCurr = new Date(current.recordedAt!)
+                      const dEntry = new Date(entry.recordedAt!)
+                      const tCurr = new Date(current.createdAt!).getTime()
+                      const tEntry = new Date(entry.createdAt!).getTime()
+                      return dEntry < dCurr || (dEntry.getTime() === dCurr.getTime() && tEntry < tCurr)
+                    })
+                    return previous && current.readingLevel.order > previous.readingLevel.order
+                  })
                 }).length}
               </p>
             </CardContent>

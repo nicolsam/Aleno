@@ -144,20 +144,25 @@ export async function GET(request: Request) {
     const improvedStudents = students
       .filter((student) => {
         const history = student.readingHistory
-        // Assessment for the selected month
-        const currentMonthAssessment = history.find(entry => 
+        // Find all assessments that happened in the selected month
+        const assessmentsInMonth = history.filter(entry => 
           new Date(entry.recordedAt) >= selectedMonthRange.start &&
-          new Date(entry.recordedAt) <= selectedMonthRange.end
-        )
-        if (!currentMonthAssessment) return false
-
-        // Find the most recent assessment BEFORE this month's assessment
-        const previousAssessment = history.find(entry => 
-          new Date(entry.recordedAt) < selectedMonthRange.start
+          new Date(entry.recordedAt) < selectedMonthRange.end
         )
         
-        // If there's a previous assessment, check if the current one is an improvement
-        return previousAssessment && currentMonthAssessment.readingLevel.order > previousAssessment.readingLevel.order
+        if (assessmentsInMonth.length === 0) return false
+
+        // For each assessment in the month, check if it's an improvement over the one before it
+        return assessmentsInMonth.some(current => {
+          // Find the assessment immediately preceding this one
+          const previous = history.find(entry => 
+            new Date(entry.recordedAt) < new Date(current.recordedAt) ||
+            (new Date(entry.recordedAt).getTime() === new Date(current.recordedAt).getTime() && 
+             new Date(entry.createdAt) < new Date(current.createdAt))
+          )
+          
+          return previous && current.readingLevel.order > previous.readingLevel.order
+        })
       })
       .map((s) => ({
         id: s.id,
