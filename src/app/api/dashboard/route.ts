@@ -4,6 +4,7 @@ import { verifyToken } from '@/lib/auth'
 import { isAttentionReadingLevel } from '@/lib/reading-levels'
 import {
   getLatestAssessmentDate,
+  getYearFromMonthKey,
   hasMonthlyReadingUpdate,
   resolveMonthInfo,
 } from '@/lib/monthly-updates'
@@ -23,6 +24,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
     const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
+    const selectedAcademicYear = getYearFromMonthKey(selectedMonth)
 
     let schoolIds: string[] = []
 
@@ -45,6 +47,7 @@ export async function GET(request: Request) {
         monthlyUpdates: {
           month: selectedMonth,
           monthStatus,
+          academicYear: selectedAcademicYear,
           totalStudents: 0,
           updatedCount: 0,
           missingCount: 0,
@@ -57,10 +60,37 @@ export async function GET(request: Request) {
       where: { 
         schoolId: { in: schoolIds },
         deletedAt: null,
-        school: { deletedAt: null }
+        school: { deletedAt: null },
+        enrollments: {
+          some: {
+            deletedAt: null,
+            class: {
+              academicYear: selectedAcademicYear,
+              schoolId: { in: schoolIds },
+              deletedAt: null,
+            },
+          },
+        },
       },
       include: {
+        enrollments: {
+          where: {
+            deletedAt: null,
+            class: {
+              academicYear: selectedAcademicYear,
+              schoolId: { in: schoolIds },
+              deletedAt: null,
+            },
+          },
+          include: { class: { include: { school: true } } },
+          orderBy: { startedAt: 'desc' },
+        },
         readingHistory: {
+          where: {
+            enrollment: {
+              class: { academicYear: selectedAcademicYear },
+            },
+          },
           orderBy: { recordedAt: 'desc' },
           include: { readingLevel: true },
         },
@@ -90,7 +120,7 @@ export async function GET(request: Request) {
         id: s.id,
         name: s.name,
         studentNumber: s.studentNumber,
-        schoolName: s.school.name,
+        schoolName: s.enrollments?.[0]?.class.school.name || s.school.name,
         level: s.readingHistory[0]?.readingLevel.name || 'Not assessed',
         levelCode: s.readingHistory[0]?.readingLevel.code || 'N/A',
       }))
@@ -101,7 +131,7 @@ export async function GET(request: Request) {
         id: s.id,
         name: s.name,
         studentNumber: s.studentNumber,
-        schoolName: s.school.name,
+        schoolName: s.enrollments?.[0]?.class.school.name || s.school.name,
         level: s.readingHistory[0]?.readingLevel.name || 'Not assessed',
         levelCode: s.readingHistory[0]?.readingLevel.code || 'N/A',
         latestAssessmentDate: getLatestAssessmentDate(s.readingHistory),
@@ -142,6 +172,7 @@ export async function GET(request: Request) {
       monthlyUpdates: {
         month: selectedMonth,
         monthStatus,
+        academicYear: selectedAcademicYear,
         totalStudents: students.length,
         updatedCount: students.length - missingMonthlyUpdateStudents.length,
         missingCount: missingMonthlyUpdateStudents.length,

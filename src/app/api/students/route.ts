@@ -3,8 +3,10 @@ import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
+import { getAcademicYearStartDate, parseAcademicYear } from '@/lib/enrollments'
 import {
   getLatestAssessmentDate,
+  getYearFromMonthKey,
   hasMonthlyReadingUpdate,
   resolveMonthInfo,
 } from '@/lib/monthly-updates'
@@ -22,6 +24,7 @@ export async function GET(request: Request) {
     const section = searchParams.get('section')
     const shift = searchParams.get('shift')
     const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
+    const selectedAcademicYear = parseAcademicYear(searchParams.get('academicYear')) || getYearFromMonthKey(selectedMonth)
 
     let validSchoolIds: string[] = []
 
@@ -38,6 +41,7 @@ export async function GET(request: Request) {
     }
 
     const classFilters: Prisma.ClassWhereInput = { deletedAt: null }
+    classFilters.academicYear = selectedAcademicYear
     if (grade) classFilters.grade = grade
     if (section) classFilters.section = section
     if (shift) classFilters.shift = shift
@@ -47,10 +51,31 @@ export async function GET(request: Request) {
         schoolId: { in: validSchoolIds },
         deletedAt: null,
         school: { deletedAt: null },
-        class: classFilters
+        enrollments: {
+          some: {
+            deletedAt: null,
+            class: {
+              ...classFilters,
+              schoolId: { in: validSchoolIds },
+              school: { deletedAt: null },
+            },
+          },
+        },
       },
       include: {
         class: true,
+        enrollments: {
+          where: {
+            deletedAt: null,
+            class: {
+              academicYear: selectedAcademicYear,
+              schoolId: { in: validSchoolIds },
+              deletedAt: null,
+            },
+          },
+          include: { class: true },
+          orderBy: { startedAt: 'desc' },
+        },
         readingHistory: {
           orderBy: { recordedAt: 'desc' },
           include: { readingLevel: true },
@@ -58,15 +83,21 @@ export async function GET(request: Request) {
       },
     })
 
-    const studentsWithMonthlyStatus = students.map((student) => ({
-      ...student,
-      monthlyUpdateStatus: hasMonthlyReadingUpdate(student.readingHistory, selectedMonthRange)
-        ? 'updated'
-        : 'missing',
-      monthStatus,
-      selectedMonth,
-      latestAssessmentDate: getLatestAssessmentDate(student.readingHistory),
-    }))
+    const studentsWithMonthlyStatus = students.map((student) => {
+      const selectedEnrollment = student.enrollments?.[0] || null
+      return {
+        ...student,
+        class: selectedEnrollment?.class || student.class,
+        selectedEnrollment,
+        selectedAcademicYear,
+        monthlyUpdateStatus: hasMonthlyReadingUpdate(student.readingHistory, selectedMonthRange)
+          ? 'updated'
+          : 'missing',
+        monthStatus,
+        selectedMonth,
+        latestAssessmentDate: getLatestAssessmentDate(student.readingHistory),
+      }
+    })
 
     return NextResponse.json({ students: studentsWithMonthlyStatus })
   } catch (error) {
@@ -105,8 +136,24 @@ export async function POST(request: Request) {
     }
 
     const student = await prisma.student.create({
-      data: { name, studentNumber, schoolId: classRecord.schoolId, classId },
-      include: { class: true }
+      data: {
+        name,
+        studentNumber,
+        schoolId: classRecord.schoolId,
+        classId,
+        enrollments: {
+          create: {
+            classId,
+            startedAt: getAcademicYearStartDate(classRecord.academicYear),
+          },
+        },
+      },
+      include: {
+        class: true,
+        enrollments: {
+          include: { class: true },
+        },
+      }
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'

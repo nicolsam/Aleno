@@ -19,6 +19,36 @@ export interface ReadingAssessmentDate {
 /** Matches MM/YYYY — the Brazilian standard month format. */
 const MONTH_KEY_PATTERN = /^(0[1-9]|1[0-2])\/\d{4}$/
 
+export const MONTH_OPTIONS = [
+  { value: '01', label: '01' },
+  { value: '02', label: '02' },
+  { value: '03', label: '03' },
+  { value: '04', label: '04' },
+  { value: '05', label: '05' },
+  { value: '06', label: '06' },
+  { value: '07', label: '07' },
+  { value: '08', label: '08' },
+  { value: '09', label: '09' },
+  { value: '10', label: '10' },
+  { value: '11', label: '11' },
+  { value: '12', label: '12' },
+]
+
+export function getAvailableMonthOptions(year: number, now = new Date()) {
+  const currentYear = now.getFullYear()
+  const currentMonth = now.getMonth() + 1
+
+  if (year > currentYear) {
+    return []
+  }
+
+  if (year < currentYear) {
+    return MONTH_OPTIONS
+  }
+
+  return MONTH_OPTIONS.filter((month) => Number(month.value) <= currentMonth)
+}
+
 /**
  * Build a month key from a Date in MM/YYYY format.
  *
@@ -85,6 +115,48 @@ export function getMonthRange(month: string): MonthRange {
     start: new Date(yearValue, monthIndex, 1),
     end: new Date(yearValue, monthIndex + 1, 1),
   }
+}
+
+export function getYearFromMonthKey(month: string): number {
+  return Number(month.split('/')[1])
+}
+
+export function getMonthPartFromMonthKey(month: string): string {
+  return month.split('/')[0] || getMonthKey().split('/')[0]
+}
+
+export function buildMonthKey(month: string, year: string | number): string {
+  return resolveMonthKey(`${month}/${year}`)
+}
+
+export function getDefaultAssessmentDateForMonth(month: string, now = new Date()): string {
+  const { monthStatus, range } = resolveMonthInfo(month, now)
+  const assessmentDate = monthStatus === 'current'
+    ? now
+    : new Date(range.end.getTime() - 24 * 60 * 60 * 1000)
+
+  const year = assessmentDate.getFullYear()
+  const monthValue = String(assessmentDate.getMonth() + 1).padStart(2, '0')
+  const day = String(assessmentDate.getDate()).padStart(2, '0')
+  return `${year}-${monthValue}-${day}`
+}
+
+export function parseDateInput(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+
+  const [, yearValue, monthValue, dayValue] = match
+  const date = new Date(Number(yearValue), Number(monthValue) - 1, Number(dayValue))
+
+  if (
+    date.getFullYear() !== Number(yearValue) ||
+    date.getMonth() !== Number(monthValue) - 1 ||
+    date.getDate() !== Number(dayValue)
+  ) {
+    return null
+  }
+
+  return date
 }
 
 /**
