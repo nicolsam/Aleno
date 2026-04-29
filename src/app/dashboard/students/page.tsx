@@ -240,7 +240,14 @@ export default function StudentsPage() {
 
     if (res.ok) {
       const data = await res.json()
-      setStudents([...students, { ...data.student, readingHistory: data.student.readingHistory || [] }])
+      setStudents([
+        ...students,
+        {
+          ...data.student,
+          readingHistory: data.student.readingHistory || [],
+          monthlyUpdateStatus: 'missing',
+        },
+      ])
       setShowModal(false)
       setNewStudent({ name: '', studentNumber: '', classId: '' })
       toast.success(tCommon('save'))
