@@ -77,22 +77,81 @@ describe('API: /api/students', () => {
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.students).toEqual(students)
+    expect(data.students).toEqual([
+      expect.objectContaining({
+        id: students[0].id,
+        name: students[0].name,
+        monthlyUpdateStatus: 'missing',
+        latestAssessmentDate: null,
+      }),
+    ])
     expect(mockFindTeacherSchool).toHaveBeenCalledWith({
       where: { teacherId_schoolId: { teacherId: 'teacher-1', schoolId: 'school-1' } },
     })
     expect(mockFindStudents).toHaveBeenCalledWith(expect.objectContaining({
+      include: expect.objectContaining({
+        readingHistory: expect.not.objectContaining({
+          where: expect.anything(),
+        }),
+      }),
       where: expect.objectContaining({
         schoolId: { in: ['school-1'] },
         deletedAt: null,
-        class: {
-          deletedAt: null,
-          grade: '1º Ano',
-          section: 'A',
-          shift: 'Morning',
-        },
+        enrollments: expect.objectContaining({
+          some: expect.objectContaining({
+            class: expect.objectContaining({
+              grade: '1º Ano',
+              section: 'A',
+              shift: 'Morning',
+            }),
+          }),
+        }),
       }),
     }))
+  })
+
+  it('GET marks students with monthly update status for the selected month', async () => {
+    mockFindStudents.mockResolvedValue([
+      {
+        id: 'student-1',
+        name: 'Student 1',
+        readingHistory: [{ id: 'history-1', recordedAt: new Date('2026-04-10T12:00:00.000Z') }],
+      },
+      {
+        id: 'student-2',
+        name: 'Student 2',
+        readingHistory: [{ id: 'history-2', recordedAt: new Date('2026-03-10T12:00:00.000Z') }],
+      },
+      { id: 'student-3', name: 'Student 3', readingHistory: [] },
+    ])
+
+    const response = await GET(createRequest('http://localhost/api/students?month=04/2026'))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.students).toMatchObject([
+      {
+        id: 'student-1',
+        monthlyUpdateStatus: 'updated',
+        monthStatus: expect.stringMatching(/current|past/),
+        selectedMonth: '04/2026',
+        latestAssessmentDate: '2026-04-10T12:00:00.000Z',
+      },
+      {
+        id: 'student-2',
+        monthlyUpdateStatus: 'missing',
+        monthStatus: expect.stringMatching(/current|past/),
+        selectedMonth: '04/2026',
+        latestAssessmentDate: '2026-03-10T12:00:00.000Z',
+      },
+      {
+        id: 'student-3',
+        monthlyUpdateStatus: 'missing',
+        monthStatus: expect.stringMatching(/current|past/),
+        selectedMonth: '04/2026',
+        latestAssessmentDate: null,
+      },
+    ])
   })
 
   it('GET returns 401 for invalid tokens', async () => {
@@ -107,7 +166,7 @@ describe('API: /api/students', () => {
   })
 
   it('POST creates a student in an accessible class', async () => {
-    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1' })
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 })
     mockFindStudent.mockResolvedValue(null)
     mockCreateStudent.mockResolvedValue({ id: 'student-1', name: 'Student 1', classId: 'class-1' })
 
@@ -126,8 +185,19 @@ describe('API: /api/students', () => {
         studentNumber: '123',
         schoolId: 'school-1',
         classId: 'class-1',
+        enrollments: {
+          create: {
+            classId: 'class-1',
+            startedAt: new Date(2026, 0, 1),
+          },
+        },
       },
-      include: { class: true },
+      include: {
+        class: true,
+        enrollments: {
+          include: { class: true },
+        },
+      },
     })
     expect(mockLogAction).toHaveBeenCalledWith(
       'teacher-1',
@@ -149,7 +219,7 @@ describe('API: /api/students', () => {
   })
 
   it('POST rejects duplicate student numbers in the same school', async () => {
-    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1' })
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 })
     mockFindStudent.mockResolvedValue({ id: 'existing-student' })
 
     const response = await POST(createRequest('http://localhost/api/students', {
@@ -165,7 +235,7 @@ describe('API: /api/students', () => {
   })
 
   it('POST rejects classes outside the teacher school access', async () => {
-    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-2' })
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-2', academicYear: 2026 })
     mockFindTeacherSchool.mockResolvedValue(null)
 
     const response = await POST(createRequest('http://localhost/api/students', {

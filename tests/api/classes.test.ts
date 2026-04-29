@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { POST } from '@/app/api/classes/route'
+import { GET, POST } from '@/app/api/classes/route'
 import { PUT } from '@/app/api/classes/[id]/route'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
@@ -8,7 +8,7 @@ vi.mock('@/lib/db', () => ({
   prisma: {
     teacher: { findUnique: vi.fn() },
     teacherSchool: { findUnique: vi.fn(), findMany: vi.fn() },
-    class: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
+    class: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     auditLog: { create: vi.fn() }
   }
 }))
@@ -26,27 +26,63 @@ describe('Classes API', () => {
     vi.clearAllMocks()
   })
 
-  const mockRequest = (body?: any) => ({
+  const mockRequest = (body?: unknown) => ({
     headers: new Headers({ authorization: 'Bearer valid-token', 'x-forwarded-for': '127.0.0.1' }),
     json: async () => body
-  } as Request)
+  } as unknown as Request)
 
   const mockAccess = () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as any)
+    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as never)
   }
+
+  it('GET returns only academic years that exist in accessible classes', async () => {
+    vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
+    vi.mocked(prisma.teacherSchool.findMany).mockResolvedValue([{ schoolId: 'school-1' }] as never)
+    vi.mocked(prisma.class.findMany)
+      .mockResolvedValueOnce([
+        { academicYear: 2026 },
+        { academicYear: 2025 },
+        { academicYear: 2025 },
+      ] as never)
+      .mockResolvedValueOnce([
+        { id: 'class-1', academicYear: 2026 },
+      ] as never)
+
+    const response = await GET(new Request('http://localhost/api/classes?academicYear=2026', {
+      headers: { authorization: 'Bearer valid-token' },
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.academicYears).toEqual([2026, 2025])
+    expect(data.classes).toEqual([{ id: 'class-1', academicYear: 2026 }])
+  })
 
   it('POST should create a class if valid', async () => {
     mockAccess()
     vi.mocked(prisma.class.findUnique).mockResolvedValue(null)
-    vi.mocked(prisma.class.create).mockResolvedValue({ id: 'class-1', grade: '1º Ano' } as any)
+    vi.mocked(prisma.class.create).mockResolvedValue({ id: 'class-1', grade: '1º Ano', academicYear: 2026 } as never)
 
-    const res = await POST(mockRequest({ grade: '1º Ano', section: 'A', shift: 'Morning', schoolId: 'school-1' }))
+    const res = await POST(mockRequest({ grade: '1º Ano', section: 'A', shift: 'Morning', schoolId: 'school-1', academicYear: 2026 }))
     const data = await res.json()
 
     expect(res.status).toBe(200)
     expect(data.class.id).toBe('class-1')
-    expect(prisma.class.create).toHaveBeenCalled()
+    expect(prisma.class.findUnique).toHaveBeenCalledWith({
+      where: {
+        schoolId_grade_section_shift_academicYear: {
+          schoolId: 'school-1',
+          grade: '1º Ano',
+          section: 'A',
+          shift: 'Morning',
+          academicYear: 2026,
+        },
+      },
+    })
+    expect(prisma.class.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ academicYear: 2026 }),
+    }))
   })
 
   it('POST should reject invalid shift', async () => {
@@ -65,14 +101,16 @@ describe('Classes API', () => {
 
   it('PUT should update class details', async () => {
     mockAccess()
-    vi.mocked(prisma.class.findUnique).mockResolvedValue({ id: 'class-1', schoolId: 'school-1' } as any)
-    vi.mocked(prisma.class.update).mockResolvedValue({ id: 'class-1', grade: '2º Ano' } as any)
+    vi.mocked(prisma.class.findUnique).mockResolvedValue({ id: 'class-1', schoolId: 'school-1' } as never)
+    vi.mocked(prisma.class.update).mockResolvedValue({ id: 'class-1', grade: '2º Ano' } as never)
 
-    const res = await PUT(mockRequest({ grade: '2º Ano', section: 'B', shift: 'Afternoon' }), { params: Promise.resolve({ id: 'class-1' }) })
+    const res = await PUT(mockRequest({ grade: '2º Ano', section: 'B', shift: 'Afternoon', academicYear: 2026 }), { params: Promise.resolve({ id: 'class-1' }) })
     const data = await res.json()
 
     expect(res.status).toBe(200)
     expect(data.class.grade).toBe('2º Ano')
-    expect(prisma.class.update).toHaveBeenCalled()
+    expect(prisma.class.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ academicYear: 2026 }),
+    }))
   })
 })

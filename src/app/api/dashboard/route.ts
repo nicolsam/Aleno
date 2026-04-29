@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 import { isAttentionReadingLevel } from '@/lib/reading-levels'
+import {
+  getLatestAssessmentDate,
+  getYearFromMonthKey,
+  hasMonthlyReadingUpdate,
+  resolveMonthInfo,
+} from '@/lib/monthly-updates'
 
 export async function GET(request: Request) {
   try {
@@ -17,6 +23,8 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
+    const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
+    const selectedAcademicYear = getYearFromMonthKey(selectedMonth)
 
     let schoolIds: string[] = []
 
@@ -36,6 +44,15 @@ export async function GET(request: Request) {
         distribution: [],
         byLevel: [],
         needAttention: [],
+        monthlyUpdates: {
+          month: selectedMonth,
+          monthStatus,
+          academicYear: selectedAcademicYear,
+          totalStudents: 0,
+          updatedCount: 0,
+          missingCount: 0,
+          missingStudents: [],
+        },
       })
     }
 
@@ -43,12 +60,38 @@ export async function GET(request: Request) {
       where: { 
         schoolId: { in: schoolIds },
         deletedAt: null,
-        school: { deletedAt: null }
+        school: { deletedAt: null },
+        enrollments: {
+          some: {
+            deletedAt: null,
+            class: {
+              academicYear: selectedAcademicYear,
+              schoolId: { in: schoolIds },
+              deletedAt: null,
+            },
+          },
+        },
       },
       include: {
+        enrollments: {
+          where: {
+            deletedAt: null,
+            class: {
+              academicYear: selectedAcademicYear,
+              schoolId: { in: schoolIds },
+              deletedAt: null,
+            },
+          },
+          include: { class: { include: { school: true } } },
+          orderBy: { startedAt: 'desc' },
+        },
         readingHistory: {
+          where: {
+            enrollment: {
+              class: { academicYear: selectedAcademicYear },
+            },
+          },
           orderBy: { recordedAt: 'desc' },
-          take: 1,
           include: { readingLevel: true },
         },
         school: true,
@@ -77,9 +120,21 @@ export async function GET(request: Request) {
         id: s.id,
         name: s.name,
         studentNumber: s.studentNumber,
-        schoolName: s.school.name,
+        schoolName: s.enrollments?.[0]?.class.school.name || s.school.name,
         level: s.readingHistory[0]?.readingLevel.name || 'Not assessed',
         levelCode: s.readingHistory[0]?.readingLevel.code || 'N/A',
+      }))
+
+    const missingMonthlyUpdateStudents = students
+      .filter((s) => !hasMonthlyReadingUpdate(s.readingHistory, selectedMonthRange))
+      .map((s) => ({
+        id: s.id,
+        name: s.name,
+        studentNumber: s.studentNumber,
+        schoolName: s.enrollments?.[0]?.class.school.name || s.school.name,
+        level: s.readingHistory[0]?.readingLevel.name || 'Not assessed',
+        levelCode: s.readingHistory[0]?.readingLevel.code || 'N/A',
+        latestAssessmentDate: getLatestAssessmentDate(s.readingHistory),
       }))
 
     // Most common level
@@ -91,15 +146,8 @@ export async function GET(request: Request) {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
-    let improvedThisMonth = 0
-    for (const student of students) {
-      const history = await prisma.studentReadingHistory.findMany({
-        where: { studentId: student.id },
-        orderBy: { recordedAt: 'desc' },
-        take: 2,
-        include: { readingLevel: true },
-      })
-
+    const improvedThisMonth = students.reduce((count, student) => {
+      const history = student.readingHistory
       if (history.length >= 2) {
         const latest = history[0]
         const previous = history[1]
@@ -107,10 +155,12 @@ export async function GET(request: Request) {
           new Date(latest.recordedAt) >= startOfMonth &&
           latest.readingLevel.order > previous.readingLevel.order
         ) {
-          improvedThisMonth++
+          return count + 1
         }
       }
-    }
+
+      return count
+    }, 0)
 
     return NextResponse.json({
       totalStudents: students.length,
@@ -119,6 +169,15 @@ export async function GET(request: Request) {
       needAttention,
       mostCommonLevel,
       improvedThisMonth,
+      monthlyUpdates: {
+        month: selectedMonth,
+        monthStatus,
+        academicYear: selectedAcademicYear,
+        totalStudents: students.length,
+        updatedCount: students.length - missingMonthlyUpdateStudents.length,
+        missingCount: missingMonthlyUpdateStudents.length,
+        missingStudents: missingMonthlyUpdateStudents,
+      },
     })
   } catch (error) {
     console.error('Dashboard error:', error)

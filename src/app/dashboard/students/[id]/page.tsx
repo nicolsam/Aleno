@@ -7,12 +7,14 @@ import { useTranslations, useLocale } from 'next-intl'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { ArrowLeft, TrendingUp, User, BookOpen } from 'lucide-react'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
+import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
 
 interface ClassRecord {
   id: string
   grade: string
   section: string
   shift: string
+  academicYear: number
 }
 
 interface HistoryEntry {
@@ -53,7 +55,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [updateLevel, setUpdateLevel] = useState({ readingLevelId: '', notes: '' })
+  const [updateLevel, setUpdateLevel] = useState({
+    readingLevelId: '',
+    notes: '',
+    recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+  })
+  const maxAssessmentDate = getDefaultAssessmentDateForMonth(getMonthKey())
 
   useEffect(() => {
     params.then(p => setStudentId(p.id))
@@ -111,13 +118,17 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         setHistory(data.history)
       }
       setShowUpdateModal(false)
-      setUpdateLevel({ readingLevelId: '', notes: '' })
+      setUpdateLevel({
+        readingLevelId: '',
+        notes: '',
+        recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+      })
     }
   }
 
   const formatClassName = (c?: ClassRecord) => {
     if (!c) return 'N/A'
-    return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)})`
+    return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)}) - ${c.academicYear}`
   }
 
   const formatDate = (dateStr: string) => {
@@ -357,6 +368,17 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                 className="w-full p-2 border border-gray-300 rounded"
                 rows={3}
               />
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">{t('assessmentDate')}</label>
+                <input
+                  type="date"
+                  value={updateLevel.recordedAt}
+                  max={maxAssessmentDate}
+                  onChange={(e) => setUpdateLevel({ ...updateLevel, recordedAt: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded"
+                  required
+                />
+              </div>
               <div className="flex gap-2">
                 <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                   {tCommon('save')}

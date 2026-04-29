@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
+import { getAcademicYearStartDate } from '@/lib/enrollments'
 
 async function checkAccess(request: Request, studentId: string) {
   const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -40,12 +41,54 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         })
         if (!ts) return NextResponse.json({ error: 'Forbidden for new class' }, { status: 403 })
       }
+
+      const enrollmentStart = getAcademicYearStartDate(classRecord.academicYear)
+      const previousEnrollmentEnd = new Date(enrollmentStart.getTime() - 24 * 60 * 60 * 1000)
+
+      await prisma.studentEnrollment.updateMany({
+        where: {
+          studentId: id,
+          endedAt: null,
+          deletedAt: null,
+          NOT: { classId },
+        },
+        data: { endedAt: previousEnrollmentEnd },
+      })
+
+      const existingEnrollment = await prisma.studentEnrollment.findFirst({
+        where: {
+          studentId: id,
+          classId,
+          deletedAt: null,
+        },
+      })
+
+      if (existingEnrollment) {
+        await prisma.studentEnrollment.update({
+          where: { id: existingEnrollment.id },
+          data: { endedAt: null },
+        })
+      } else {
+        await prisma.studentEnrollment.create({
+          data: {
+            studentId: id,
+            classId,
+            startedAt: enrollmentStart,
+          },
+        })
+      }
     }
 
     const updatedStudent = await prisma.student.update({
       where: { id },
       data: { name, studentNumber, classId, schoolId: classRecord.schoolId },
-      include: { class: true }
+      include: {
+        class: true,
+        enrollments: {
+          include: { class: true },
+          orderBy: { startedAt: 'desc' },
+        },
+      }
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'

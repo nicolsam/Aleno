@@ -39,10 +39,18 @@
     "backToStudents": "Back to Students",
     "readingHistory": "Reading History",
     "recordedBy": "Recorded by",
+    "latestAssessment": "Latest Assessment",
     "noHistory": "No assessments yet.",
     "progressChart": "Progress Chart",
     "studentInfo": "Student Information",
-    "school": "School"
+    "school": "School",
+    "monthFilter": "Month",
+    "monthlyUpdate": "Monthly Update",
+    "monthlyUpdated": "Updated this month",
+    "monthlyMissing": "Needs monthly update",
+    "monthlyUpdatedPast": "Updated in this month",
+    "monthlyMissingPast": "No update recorded",
+    "assessmentDate": "Assessment date"
   },
   "classes": {
     "title": "Classes",
@@ -51,6 +59,7 @@
     "grade": "Grade",
     "section": "Section",
     "shift": "Shift",
+    "academicYear": "Academic Year",
     "school": "School",
     "noClasses": "No classes yet. Add your first class.",
     "needSchool": "You need to create a school first.",
@@ -85,6 +94,15 @@
     "distribution": "Distribution by Level",
     "byLevel": "Students by Level",
     "studentsAttention": "Students Need Attention",
+    "monthFilter": "Month",
+    "updatedThisMonth": "Updated in Selected Month",
+    "missingMonthlyUpdates": "Missing Monthly Updates",
+    "studentsMissingMonthlyUpdate": "Students Missing Monthly Update",
+    "monthlyUpdateAlertTitle": "Monthly reading updates needed",
+    "monthlyUpdateAlertDescription": "{count} student(s) still need a reading-level update for {month}.",
+    "pastMonthInfoDescription": "{count} student(s) did not receive an update in {month}.",
+    "reviewMonthlyUpdates": "Review students",
+    "studentsMissingMonthlyUpdatePast": "Students without updates in {month}",
     "noData": "No students yet. Add students to see statistics."
   },
   "auth": {

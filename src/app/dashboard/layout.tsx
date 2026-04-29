@@ -93,7 +93,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   // Only show school filter on pages that need it
-  const filterPages = ['/dashboard', '/dashboard/students', '/dashboard/classes']
+  const filterPages = ['/dashboard', '/dashboard/classes']
   const showFilter = filterPages.includes(pathname) && schools.length > 0
 
   return (

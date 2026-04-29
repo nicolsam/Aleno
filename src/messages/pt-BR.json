@@ -39,10 +39,18 @@
     "backToStudents": "Voltar para Alunos",
     "readingHistory": "Histórico de Leitura",
     "recordedBy": "Registrado por",
+    "latestAssessment": "Última Avaliação",
     "noHistory": "Nenhuma avaliação ainda.",
     "progressChart": "Gráfico de Progresso",
     "studentInfo": "Informações do Aluno",
-    "school": "Escola"
+    "school": "Escola",
+    "monthFilter": "Mês",
+    "monthlyUpdate": "Atualização Mensal",
+    "monthlyUpdated": "Atualizado este mês",
+    "monthlyMissing": "Precisa atualização mensal",
+    "monthlyUpdatedPast": "Atualizado neste mês",
+    "monthlyMissingPast": "Sem atualização registrada",
+    "assessmentDate": "Data da avaliação"
   },
   "classes": {
     "title": "Turmas",
@@ -51,6 +59,7 @@
     "grade": "Ano/Série",
     "section": "Turma (Letra)",
     "shift": "Turno",
+    "academicYear": "Ano letivo",
     "school": "Escola",
     "noClasses": "Nenhuma turma ainda. Adicione sua primeira turma.",
     "needSchool": "Você precisa criar uma escola primeiro.",
@@ -85,6 +94,15 @@
     "distribution": "Distribuição por Nível",
     "byLevel": "Alunos por Nível",
     "studentsAttention": "Alunos que Precisam de Atenção",
+    "monthFilter": "Mês",
+    "updatedThisMonth": "Atualizados no Mês Selecionado",
+    "missingMonthlyUpdates": "Atualizações Mensais Pendentes",
+    "studentsMissingMonthlyUpdate": "Alunos com Atualização Mensal Pendente",
+    "monthlyUpdateAlertTitle": "Atualizações mensais de leitura necessárias",
+    "monthlyUpdateAlertDescription": "{count} aluno(s) ainda precisam de atualização do nível de leitura para {month}.",
+    "pastMonthInfoDescription": "{count} aluno(s) não receberam atualização em {month}.",
+    "reviewMonthlyUpdates": "Revisar alunos",
+    "studentsMissingMonthlyUpdatePast": "Alunos sem atualização em {month}",
     "noData": "Nenhum aluno ainda. Adicione alunos para ver estatísticas."
   },
   "auth": {

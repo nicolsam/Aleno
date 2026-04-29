@@ -15,6 +15,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Pencil, Trash2 } from "lucide-react"
+import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 interface School {
   id: string
@@ -26,12 +34,14 @@ interface ClassRecord {
   grade: string
   section: string
   shift: string
+  academicYear: number
   schoolId: string
   school: School
 }
 
 const VALID_SHIFTS = ['Morning', 'Afternoon', 'Night']
 const VALID_GRADES = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano', '1ª Série', '2ª Série', '3ª Série']
+const DEFAULT_ACADEMIC_YEAR = getDefaultAcademicYear()
 
 export default function ClassesPage() {
   const router = useRouter()
@@ -41,10 +51,12 @@ export default function ClassesPage() {
   
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [schools, setSchools] = useState<School[]>([])
+  const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [schoolId, setSchoolId] = useState('')
+  const [academicYearFilter, setAcademicYearFilter] = useState(String(DEFAULT_ACADEMIC_YEAR))
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [newClass, setNewClass] = useState({ grade: '', section: '', shift: '', schoolId: '' })
+  const [newClass, setNewClass] = useState({ grade: '', section: '', shift: '', schoolId: '', academicYear: DEFAULT_ACADEMIC_YEAR })
   
   const [editingClass, setEditingClass] = useState<ClassRecord | null>(null)
   const [deletingClassId, setDeletingClassId] = useState<string | null>(null)
@@ -79,18 +91,26 @@ export default function ClassesPage() {
         setSchools(schoolsData.schools)
       }
 
-      const url = schoolId ? `/api/classes?schoolId=${schoolId}` : '/api/classes'
+      const params = new URLSearchParams()
+      if (schoolId) params.set('schoolId', schoolId)
+      if (academicYearFilter) params.set('academicYear', academicYearFilter)
+      const url = `/api/classes${params.toString() ? `?${params.toString()}` : ''}`
       const classesRes = await fetch(url, {
         headers: { Authorization: `Bearer ${token}` },
       })
       const classesData = await classesRes.json()
       if (classesRes.ok && classesData.classes) {
         setClasses(classesData.classes)
+        const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
+        setAvailableAcademicYears(years)
+        if (years.length > 0 && !years.includes(Number(academicYearFilter))) {
+          setAcademicYearFilter(String(years[0]))
+        }
       }
       setLoading(false)
     }
     fetchData()
-  }, [schoolId])
+  }, [schoolId, academicYearFilter])
 
   const handleCreateClass = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -107,7 +127,7 @@ export default function ClassesPage() {
       const data = await res.json()
       setClasses([...classes, data.class])
       setShowModal(false)
-      setNewClass({ grade: '', section: '', shift: '', schoolId: '' })
+      setNewClass({ grade: '', section: '', shift: '', schoolId: '', academicYear: Number(academicYearFilter) || DEFAULT_ACADEMIC_YEAR })
       toast.success(tCommon('save'))
     } else {
       const data = await res.json()
@@ -127,7 +147,8 @@ export default function ClassesPage() {
       body: JSON.stringify({ 
         grade: editingClass.grade, 
         section: editingClass.section,
-        shift: editingClass.shift
+        shift: editingClass.shift,
+        academicYear: editingClass.academicYear
       }),
     })
 
@@ -206,11 +227,31 @@ export default function ClassesPage() {
         </button>
       </div>
 
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <label className="block text-sm text-gray-600 mb-1">{t('academicYear')}</label>
+        <Select
+          value={academicYearFilter}
+          onValueChange={setAcademicYearFilter}
+        >
+          <SelectTrigger className="w-full max-w-xs">
+            <SelectValue placeholder={t('academicYear')} />
+          </SelectTrigger>
+          <SelectContent>
+            {availableAcademicYears.map((year) => (
+              <SelectItem key={year} value={String(year)}>
+                {year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left p-4 text-gray-700">{t('grade')}</th>
+              <th className="text-left p-4 text-gray-700">{t('academicYear')}</th>
               <th className="text-left p-4 text-gray-700">{t('section')}</th>
               <th className="text-left p-4 text-gray-700">{t('shift')}</th>
               <th className="text-left p-4 text-gray-700">{t('school')}</th>
@@ -220,7 +261,7 @@ export default function ClassesPage() {
           <tbody>
             {classes.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-4 text-center text-gray-700">
+                <td colSpan={6} className="p-4 text-center text-gray-700">
                   {t('noClasses')}
                 </td>
               </tr>
@@ -228,6 +269,7 @@ export default function ClassesPage() {
               classes.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-gray-50 group">
                   <td className="p-4 text-gray-800">{c.grade}</td>
+                  <td className="p-4 text-gray-800">{c.academicYear}</td>
                   <td className="p-4 text-gray-800">{c.section}</td>
                   <td className="p-4 text-gray-800">{t(`shifts.${c.shift}`)}</td>
                   <td className="p-4 text-gray-800">{c.school?.name}</td>
@@ -285,6 +327,19 @@ export default function ClassesPage() {
                 ))}
               </select>
 
+              <Select value={String(newClass.academicYear)} onValueChange={(value) => setNewClass({ ...newClass, academicYear: Number(value) })}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('academicYear')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACADEMIC_YEARS.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
               <input
                 type="text"
                 placeholder={t('section')}
@@ -336,6 +391,19 @@ export default function ClassesPage() {
                   <option key={grade} value={grade}>{grade}</option>
                 ))}
               </select>
+
+              <Select value={String(editingClass.academicYear)} onValueChange={(value) => setEditingClass({ ...editingClass, academicYear: Number(value) })}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder={t('academicYear')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {ACADEMIC_YEARS.map((year) => (
+                    <SelectItem key={year} value={String(year)}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <input
                 type="text"
