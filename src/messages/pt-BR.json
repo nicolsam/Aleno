@@ -10,7 +10,8 @@
     "confirmDelete": "Tem certeza que deseja excluir?",
     "deleteWarning": "Esta ação não pode ser desfeita.",
     "createSchool": "Criar uma Escola",
-    "addSchool": "Adicionar Escola"
+    "addSchool": "Adicionar Escola",
+    "actions": "Ações"
   },
   "nav": {
     "dashboard": "Painel",
