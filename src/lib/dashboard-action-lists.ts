@@ -1,4 +1,7 @@
-export type DashboardActionListPath = '/dashboard/students/need-attention' | '/dashboard/students/missing-updates'
+export type DashboardActionListPath = 
+  | '/dashboard/students/need-attention' 
+  | '/dashboard/students/missing-updates' 
+  | '/dashboard/students/improved'
 
 interface DashboardActionListHrefParams {
   month: string
