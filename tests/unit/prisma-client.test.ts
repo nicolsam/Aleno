@@ -15,6 +15,7 @@ describe('generated Prisma client', () => {
       AuditLog: 'AuditLog',
       TeacherSchool: 'TeacherSchool',
       Student: 'Student',
+      StudentEnrollment: 'StudentEnrollment',
       ReadingLevel: 'ReadingLevel',
       StudentReadingHistory: 'StudentReadingHistory',
     })
@@ -28,6 +29,14 @@ describe('generated Prisma client', () => {
       schoolId: 'schoolId',
       classId: 'classId',
       deletedAt: 'deletedAt',
+    })
+
+    expect(Prisma.StudentEnrollmentScalarFieldEnum).toMatchObject({
+      id: 'id',
+      studentId: 'studentId',
+      classId: 'classId',
+      startedAt: 'startedAt',
+      endedAt: 'endedAt',
     })
 
     expect(Prisma.ReadingLevelScalarFieldEnum).toMatchObject({

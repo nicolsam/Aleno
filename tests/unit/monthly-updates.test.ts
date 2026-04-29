@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import {
   fromInputMonth,
+  buildMonthKey,
+  getAvailableMonthOptions,
   getLatestAssessmentDate,
+  getDefaultAssessmentDateForMonth,
   getMonthKey,
+  getMonthPartFromMonthKey,
   getMonthRange,
   getMonthStatus,
   hasMonthlyReadingUpdate,
   isDateInMonth,
   resolveMonthInfo,
   resolveMonthKey,
+  parseDateInput,
   toInputMonth,
 } from '@/lib/monthly-updates'
 
@@ -21,6 +26,19 @@ describe('monthly update helpers', () => {
   it('converts between MM/YYYY and HTML input format', () => {
     expect(toInputMonth('04/2026')).toBe('2026-04')
     expect(fromInputMonth('2026-04')).toBe('04/2026')
+  })
+
+  it('builds month keys from split month and year filters', () => {
+    expect(buildMonthKey('03', 2025)).toBe('03/2025')
+    expect(getMonthPartFromMonthKey('03/2025')).toBe('03')
+  })
+
+  it('returns only months available for the selected year', () => {
+    const now = new Date(2026, 3, 27) // April 2026
+
+    expect(getAvailableMonthOptions(2025, now)).toHaveLength(12)
+    expect(getAvailableMonthOptions(2026, now).map((month) => month.value)).toEqual(['01', '02', '03', '04'])
+    expect(getAvailableMonthOptions(2027, now)).toEqual([])
   })
 
   it('uses a valid month key or falls back to the current month', () => {
@@ -71,6 +89,19 @@ describe('monthly update helpers', () => {
     const future = resolveMonthInfo('06/2026', now)
     expect(future.month).toBe('04/2026')
     expect(future.monthStatus).toBe('current')
+  })
+
+  it('chooses default assessment dates for current and past months', () => {
+    const now = new Date(2026, 3, 27)
+
+    expect(getDefaultAssessmentDateForMonth('04/2026', now)).toBe('2026-04-27')
+    expect(getDefaultAssessmentDateForMonth('02/2026', now)).toBe('2026-02-28')
+  })
+
+  it('parses date input as a local calendar date', () => {
+    expect(parseDateInput('2026-04-10')).toEqual(new Date(2026, 3, 10))
+    expect(parseDateInput('2026-02-31')).toBeNull()
+    expect(parseDateInput('04/10/2026')).toBeNull()
   })
 
   it('checks whether assessment dates are inside the selected month', () => {

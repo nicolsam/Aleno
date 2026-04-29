@@ -8,6 +8,7 @@ vi.mock('@/lib/db', () => ({
     teacher: { findUnique: vi.fn() },
     teacherSchool: { findUnique: vi.fn() },
     student: { findUnique: vi.fn(), update: vi.fn() },
+    studentEnrollment: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
     class: { findUnique: vi.fn() },
     auditLog: { create: vi.fn() }
   }
@@ -26,22 +27,22 @@ describe('Students API PUT & DELETE', () => {
     vi.clearAllMocks()
   })
 
-  const mockRequest = (body?: any) => ({
+  const mockRequest = (body?: unknown) => ({
     headers: new Headers({ authorization: 'Bearer valid-token' }),
     json: async () => body
-  } as Request)
+  } as unknown as Request)
 
   const mockAccess = () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
-    vi.mocked(prisma.teacher.findUnique).mockResolvedValue({ id: 'teacher-1' } as any)
-    vi.mocked(prisma.student.findUnique).mockResolvedValue({ id: 'student-1', schoolId: 'school-1', classId: 'class-1' } as any)
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as any)
-    vi.mocked(prisma.class.findUnique).mockResolvedValue({ id: 'class-1', schoolId: 'school-1' } as any)
+    vi.mocked(prisma.teacher.findUnique).mockResolvedValue({ id: 'teacher-1' } as never)
+    vi.mocked(prisma.student.findUnique).mockResolvedValue({ id: 'student-1', schoolId: 'school-1', classId: 'class-1' } as never)
+    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as never)
+    vi.mocked(prisma.class.findUnique).mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 } as never)
   }
 
   it('PUT should update a student', async () => {
     mockAccess()
-    vi.mocked(prisma.student.update).mockResolvedValue({ id: 'student-1', name: 'Updated' } as any)
+    vi.mocked(prisma.student.update).mockResolvedValue({ id: 'student-1', name: 'Updated' } as never)
 
     const res = await PUT(mockRequest({ name: 'Updated', studentNumber: '123', classId: 'class-1' }), { params: Promise.resolve({ id: 'student-1' }) })
     const data = await res.json()
@@ -51,13 +52,19 @@ describe('Students API PUT & DELETE', () => {
     expect(prisma.student.update).toHaveBeenCalledWith({
       where: { id: 'student-1' },
       data: { name: 'Updated', studentNumber: '123', classId: 'class-1', schoolId: 'school-1' },
-      include: { class: true }
+      include: {
+        class: true,
+        enrollments: {
+          include: { class: true },
+          orderBy: { startedAt: 'desc' },
+        },
+      }
     })
   })
 
   it('DELETE should soft delete a student', async () => {
     mockAccess()
-    vi.mocked(prisma.student.update).mockResolvedValue({ id: 'student-1' } as any)
+    vi.mocked(prisma.student.update).mockResolvedValue({ id: 'student-1' } as never)
 
     const res = await DELETE(mockRequest(), { params: Promise.resolve({ id: 'student-1' }) })
     const data = await res.json()

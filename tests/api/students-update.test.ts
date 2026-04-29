@@ -1,8 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // Use vi.hoisted to define mocks at the right time
-const { mockCreateHistory, mockVerifyToken } = vi.hoisted(() => ({
+const { mockCreateHistory, mockFindStudent, mockFindTeacherSchool, mockVerifyToken } = vi.hoisted(() => ({
   mockCreateHistory: vi.fn(),
+  mockFindStudent: vi.fn(),
+  mockFindTeacherSchool: vi.fn(),
   mockVerifyToken: vi.fn(),
 }))
 
@@ -11,8 +13,8 @@ vi.mock('@/lib/db', () => ({
     studentReadingHistory: { create: mockCreateHistory },
     teacher: { findUnique: vi.fn() },
     school: { findMany: vi.fn() },
-    teacherSchool: { findMany: vi.fn() },
-    student: { findMany: vi.fn() },
+    teacherSchool: { findMany: vi.fn(), findUnique: mockFindTeacherSchool },
+    student: { findMany: vi.fn(), findUnique: mockFindStudent },
     readingLevel: { findMany: vi.fn() },
   },
 }))
@@ -26,11 +28,24 @@ import { PATCH as UpdateReadingLevel } from '@/app/api/students/update/route'
 describe('API: /api/students/update PATCH', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.useRealTimers()
     mockVerifyToken.mockImplementation((token: string) => {
       if (token && token.startsWith('valid-')) {
         return { id: 'teacher-123', email: 'teacher@test.com' }
       }
       return null
+    })
+    mockFindTeacherSchool.mockResolvedValue({ teacherId: 'teacher-123', schoolId: 'school-1' })
+    mockFindStudent.mockResolvedValue({
+      id: 'student-123',
+      schoolId: 'school-1',
+      enrollments: [{
+        id: 'enrollment-2026',
+        startedAt: new Date(2026, 0, 1),
+        endedAt: null,
+        deletedAt: null,
+        class: { academicYear: 2026 },
+      }],
     })
   })
 
@@ -40,7 +55,7 @@ describe('API: /api/students/update PATCH', () => {
       method: 'PATCH',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ studentId: 's1', readingLevelId: 'l1' }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(401)
@@ -57,7 +72,7 @@ describe('API: /api/students/update PATCH', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({ studentId: 's1', readingLevelId: 'l1' }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(401)
@@ -72,7 +87,7 @@ describe('API: /api/students/update PATCH', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({ readingLevelId: 'level-1' }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(400)
@@ -89,7 +104,7 @@ describe('API: /api/students/update PATCH', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({ studentId: 'student-1' }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(400)
@@ -104,7 +119,7 @@ describe('API: /api/students/update PATCH', () => {
         'content-type': 'application/json',
       },
       body: JSON.stringify({ studentId: 'student-1', readingLevelId: '' }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(400)
@@ -131,9 +146,10 @@ describe('API: /api/students/update PATCH', () => {
       body: JSON.stringify({ 
         studentId: 'student-123', 
         readingLevelId: 'level-123',
-        notes: 'Good progress'
+        notes: 'Good progress',
+        recordedAt: '2026-04-10',
       }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(200)
@@ -141,6 +157,71 @@ describe('API: /api/students/update PATCH', () => {
     const data = await response.json()
     expect(data.history).toBeDefined()
     expect(data.history.id).toBe('history-1')
+    expect(mockCreateHistory).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        studentId: 'student-123',
+        enrollmentId: 'enrollment-2026',
+        readingLevelId: 'level-123',
+        recordedAt: new Date(2026, 3, 10),
+      }),
+    })
+  })
+
+  it('should reject future assessment dates', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 3, 10))
+
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: {
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        studentId: 'student-123',
+        readingLevelId: 'level-123',
+        recordedAt: '2026-04-11',
+      }),
+    })
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.error).toBe('Future assessment dates are not allowed')
+    expect(mockCreateHistory).not.toHaveBeenCalled()
+  })
+
+  it('should reject dates without a matching enrollment year', async () => {
+    mockFindStudent.mockResolvedValue({
+      id: 'student-123',
+      schoolId: 'school-1',
+      enrollments: [{
+        id: 'enrollment-2026',
+        startedAt: new Date(2026, 0, 1),
+        endedAt: null,
+        deletedAt: null,
+        class: { academicYear: 2026 },
+      }],
+    })
+
+    const request = new Request('http://localhost/api/students/update', {
+      method: 'PATCH',
+      headers: {
+        authorization: 'Bearer valid-token',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        studentId: 'student-123',
+        readingLevelId: 'level-123',
+        recordedAt: '2025-04-10',
+      }),
+    })
+
+    const response = await UpdateReadingLevel(request)
+    expect(response.status).toBe(400)
+    const data = await response.json()
+    expect(data.error).toContain('No enrollment found')
+    expect(mockCreateHistory).not.toHaveBeenCalled()
   })
 
   // Test 7: DB failure
@@ -155,9 +236,10 @@ describe('API: /api/students/update PATCH', () => {
       },
       body: JSON.stringify({ 
         studentId: 'student-123', 
-        readingLevelId: 'level-123' 
+        readingLevelId: 'level-123',
+        recordedAt: '2026-04-10',
       }),
-    }) as any
+    })
 
     const response = await UpdateReadingLevel(request)
     expect(response.status).toBe(500)

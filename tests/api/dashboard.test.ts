@@ -47,6 +47,13 @@ function createStudent(id: string, code: string, recordedAt = new Date('2026-04-
     name: `Student ${id}`,
     studentNumber: id,
     school: { name: 'Test School' },
+    enrollments: [{
+      id: `enrollment-${id}`,
+      class: {
+        academicYear: 2026,
+        school: { name: 'Test School' },
+      },
+    }],
     readingHistory: [{ readingLevelId: level.id, readingLevel: level, recordedAt }],
   }
 }
