@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import { useTranslations, useLocale } from 'next-intl'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
-import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
 
 interface School {
   id: string
@@ -145,11 +144,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </aside>
 
       <main className="flex-1 p-8">
-        {!mounted ? (
-          <DashboardSkeleton />
-        ) : (
-          children
-        )}
+        {children}
       </main>
     </div>
   )
