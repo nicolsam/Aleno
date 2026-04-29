@@ -8,6 +8,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianG
 import { ArrowLeft, TrendingUp, User, BookOpen } from 'lucide-react'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
+import StudentProfileSkeleton from '@/components/skeletons/StudentProfileSkeleton'
 
 interface ClassRecord {
   id: string
@@ -166,11 +167,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
-    )
+    return <StudentProfileSkeleton />
   }
 
   if (!student) {

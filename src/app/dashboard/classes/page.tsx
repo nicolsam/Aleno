@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import ClassesSkeleton from '@/components/skeletons/ClassesSkeleton'
 import { toast } from "sonner"
 import {
   AlertDialog,
@@ -209,7 +210,7 @@ export default function ClassesPage() {
   }
 
   if (loading) {
-    return <div className="p-8 text-center">{tCommon('loading')}...</div>
+    return <ClassesSkeleton />
   }
 
   return (
