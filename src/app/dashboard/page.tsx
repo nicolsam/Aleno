@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
+import { ArrowRight } from 'lucide-react'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
+import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
 import { ACADEMIC_YEARS } from '@/lib/academic-years'
 import {
   buildMonthKey,
@@ -158,6 +161,16 @@ export default function DashboardPage() {
   }
 
   const isCurrent = stats.monthlyUpdates.monthStatus === 'current'
+  const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', {
+    month: selectedMonth,
+    schoolId,
+    from: 'dashboard',
+  })
+  const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', {
+    month: selectedMonth,
+    schoolId,
+    from: 'dashboard',
+  })
 
   return (
     <div>
@@ -210,13 +223,10 @@ export default function DashboardPage() {
                 })}
               </AlertDescription>
             </div>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => router.push(`/dashboard/students?month=${stats.monthlyUpdates.month}`)}
-              className="self-start bg-amber-600 text-white hover:bg-amber-700 md:self-auto"
-            >
-              {t('dashboard.reviewMonthlyUpdates')}
+            <Button asChild variant="secondary" className="self-start bg-amber-600 text-white hover:bg-amber-700 md:self-auto">
+              <Link href={missingUpdatesHref}>
+                {t('dashboard.reviewMonthlyUpdates')}
+              </Link>
             </Button>
           </div>
         </Alert>
@@ -249,10 +259,17 @@ export default function DashboardPage() {
           <h3 className="text-gray-600 text-sm">{t('dashboard.improvedThisMonth')}</h3>
           <p className="text-3xl font-bold text-green-600">{stats.improvedThisMonth}</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-600 text-sm">{t('dashboard.needAttention')}</h3>
-          <p className="text-3xl font-bold text-red-600">{stats.needAttention.length}</p>
-        </div>
+        <Link href={needAttentionHref}>
+          <div className="bg-white p-6 rounded-lg shadow transition-shadow hover:shadow-md cursor-pointer h-full">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-gray-600 text-sm">{t('dashboard.needAttention')}</h3>
+                <p className="text-3xl font-bold text-red-600">{stats.needAttention.length}</p>
+              </div>
+              <ArrowRight className="size-4 text-muted-foreground mt-1" />
+            </div>
+          </div>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -266,16 +283,21 @@ export default function DashboardPage() {
             <p className="text-3xl font-bold text-green-600">{stats.monthlyUpdates.updatedCount}</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              {t('dashboard.missingMonthlyUpdates')}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold text-amber-600">{stats.monthlyUpdates.missingCount}</p>
-          </CardContent>
-        </Card>
+        <Link href={missingUpdatesHref}>
+          <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('dashboard.missingMonthlyUpdates')}
+                </CardTitle>
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-amber-600">{stats.monthlyUpdates.missingCount}</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -315,91 +337,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {stats.needAttention.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-red-600 mb-4">{t('dashboard.studentsAttention')}</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 text-gray-700">{t('students.name')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('students.studentNumber')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('nav.schools')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('students.currentLevel')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.needAttention.map((student) => (
-                  <tr key={student.id} className="border-b">
-                    <td className="py-2 text-gray-800">{student.name}</td>
-                    <td className="py-2 text-gray-800">{student.studentNumber}</td>
-                    <td className="py-2 text-gray-800">{student.schoolName}</td>
-                    <td className="py-2">
-                      <span
-                        className="px-2 py-1 rounded text-sm"
-                        style={{
-                          backgroundColor: getReadingLevelStyle(student.levelCode).backgroundColor,
-                          color: getReadingLevelStyle(student.levelCode).textColor,
-                        }}
-                      >
-                        {student.levelCode !== 'N/A' ? t(`levels.${student.levelCode}`) : t('students.notAssessed')}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {stats.monthlyUpdates.missingStudents.length > 0 && (
-        <div className="mt-6 bg-white p-6 rounded-lg shadow">
-          <h3 className={`text-lg font-semibold mb-4 ${isCurrent ? 'text-amber-700' : 'text-gray-700'}`}>
-            {isCurrent
-              ? t('dashboard.studentsMissingMonthlyUpdate')
-              : t('dashboard.studentsMissingMonthlyUpdatePast', { month: stats.monthlyUpdates.month })}
-          </h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2 text-gray-700">{t('students.name')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('students.studentNumber')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('nav.schools')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('students.currentLevel')}</th>
-                  <th className="text-left py-2 text-gray-700">{t('students.latestAssessment')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.monthlyUpdates.missingStudents.map((student) => (
-                  <tr key={student.id} className="border-b">
-                    <td className="py-2 text-gray-800">{student.name}</td>
-                    <td className="py-2 text-gray-800">{student.studentNumber}</td>
-                    <td className="py-2 text-gray-800">{student.schoolName}</td>
-                    <td className="py-2">
-                      <span
-                        className="px-2 py-1 rounded text-sm"
-                        style={{
-                          backgroundColor: getReadingLevelStyle(student.levelCode).backgroundColor,
-                          color: getReadingLevelStyle(student.levelCode).textColor,
-                        }}
-                      >
-                        {student.levelCode !== 'N/A' ? t(`levels.${student.levelCode}`) : t('students.notAssessed')}
-                      </span>
-                    </td>
-                    <td className="py-2 text-gray-800">
-                      {student.latestAssessmentDate
-                        ? new Date(student.latestAssessmentDate).toLocaleDateString()
-                        : t('students.notAssessed')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

@@ -50,7 +50,11 @@
     "monthlyMissing": "Precisa atualização mensal",
     "monthlyUpdatedPast": "Atualizado neste mês",
     "monthlyMissingPast": "Sem atualização registrada",
-    "assessmentDate": "Data da avaliação"
+    "assessmentDate": "Data da avaliação",
+    "needAttention": "Precisam de Atenção",
+    "missingMonthlyUpdates": "Atualizações Mensais Pendentes",
+    "openNeedAttention": "Abrir alunos que precisam de atenção",
+    "openMissingUpdates": "Abrir atualizações mensais pendentes"
   },
   "classes": {
     "title": "Turmas",
@@ -103,6 +107,11 @@
     "pastMonthInfoDescription": "{count} aluno(s) não receberam atualização em {month}.",
     "reviewMonthlyUpdates": "Revisar alunos",
     "studentsMissingMonthlyUpdatePast": "Alunos sem atualização em {month}",
+    "openStudentsAttention": "Abrir alunos que precisam de atenção",
+    "openMissingMonthlyUpdates": "Abrir atualizações mensais pendentes",
+    "backToDashboard": "Voltar para o Painel",
+    "noStudentsNeedAttention": "Nenhum aluno precisa de atenção para estes filtros.",
+    "noStudentsMissingMonthlyUpdate": "Nenhum aluno está com atualização mensal pendente para estes filtros.",
     "noData": "Nenhum aluno ainda. Adicione alunos para ver estatísticas."
   },
   "auth": {

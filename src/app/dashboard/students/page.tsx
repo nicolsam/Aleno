@@ -15,8 +15,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Pencil, Trash2 } from "lucide-react"
-import { getReadingLevelStyle } from '@/lib/reading-levels'
+import Link from 'next/link'
+import { ArrowRight, Pencil, Trash2 } from "lucide-react"
+import { getReadingLevelStyle, isAttentionReadingLevel } from '@/lib/reading-levels'
+import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import {
   buildMonthKey,
@@ -454,6 +457,43 @@ export default function StudentsPage() {
       {error && (
         <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">{error}</div>
       )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Link href={buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })}>
+          <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('needAttention')}
+                </CardTitle>
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-red-600">
+                {students.filter((s) => isAttentionReadingLevel(s.readingHistory?.[0]?.readingLevel.code)).length}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href={buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId })}>
+          <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
+            <CardHeader className="pb-2">
+              <div className="flex items-start justify-between gap-3">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {t('missingMonthlyUpdates')}
+                </CardTitle>
+                <ArrowRight className="size-4 text-muted-foreground" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-amber-600">
+                {students.filter((s) => s.monthlyUpdateStatus === 'missing').length}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+      </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
