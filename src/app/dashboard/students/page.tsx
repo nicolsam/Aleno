@@ -60,7 +60,8 @@ interface Student {
   readingHistory: {
     id: string
     recordedAt?: string
-    readingLevel: { name: string; code: string }
+    createdAt?: string
+    readingLevel: { name: string; code: string; order: number }
   }[]
   monthlyUpdateStatus?: 'updated' | 'missing'
   monthStatus?: 'current' | 'past'
