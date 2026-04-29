@@ -96,12 +96,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen flex">
-      <aside className="w-64 bg-gray-800 text-white min-h-screen relative">
+      <aside className="w-64 bg-gray-800 text-white h-screen sticky top-0 flex flex-col flex-shrink-0">
         <div className="p-4">
           <h1 className="text-xl font-bold">Aleno</h1>
           {teacher && mounted && <p className="text-sm text-gray-300 mt-1">{teacher.name}</p>}
         </div>
-        <nav className="mt-4">
+        <nav className="mt-4 flex-1 overflow-y-auto custom-scrollbar">
           <a
             href="/dashboard"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard' ? 'bg-gray-700' : ''}`}
@@ -135,7 +135,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </a>
           )}
         </nav>
-        <div className="absolute bottom-0 w-64 p-4 flex flex-col gap-4">
+        <div className="p-4 flex flex-col gap-4 border-t border-gray-700">
           <LanguageSwitcher />
           <button onClick={handleLogout} className="text-left text-sm text-gray-300 hover:text-white">
             {t('logout')}
