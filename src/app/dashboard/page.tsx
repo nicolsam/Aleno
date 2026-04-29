@@ -34,7 +34,8 @@ interface Stats {
   distribution: { level: string; name: string; count: number; percentage: number }[]
   needAttention: { id: string; name: string; studentNumber: string; schoolName: string; level: string; levelCode: string }[]
   mostCommonLevel: string | null
-  improvedThisMonth: number
+  improvedCount: number
+  improved: { id: string; name: string; studentNumber: string; schoolName: string; level: string; levelCode: string }[]
   monthlyUpdates: {
     month: string
     monthStatus: 'current' | 'past'
@@ -166,16 +167,9 @@ export default function DashboardPage() {
   }
 
   const isCurrent = stats?.monthlyUpdates.monthStatus === 'current'
-  const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', {
-    month: selectedMonth,
-    schoolId,
-    from: 'dashboard',
-  })
-  const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', {
-    month: selectedMonth,
-    schoolId,
-    from: 'dashboard',
-  })
+  const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId, from: 'dashboard' })
+  const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId, from: 'dashboard' })
+  const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId, from: 'dashboard' })
 
   return (
     <div>
@@ -286,10 +280,17 @@ export default function DashboardPage() {
             {stats.mostCommonLevel ? t(`levels.${stats.mostCommonLevel}`) : '-'}
           </p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-gray-600 text-sm">{t('dashboard.improvedThisMonth')}</h3>
-          <p className="text-3xl font-bold text-green-600">{stats.improvedThisMonth}</p>
-        </div>
+        <Link href={improvedHref}>
+          <div className="bg-white p-6 rounded-lg shadow transition-shadow hover:shadow-md cursor-pointer h-full">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-gray-600 text-sm">{t('dashboard.improvedThisMonth')}</h3>
+                <p className="text-3xl font-bold text-green-600">{stats.improvedCount ?? 0}</p>
+              </div>
+              <ArrowRight className="size-4 text-muted-foreground mt-1" />
+            </div>
+          </div>
+        </Link>
         <Link href={needAttentionHref}>
           <div className="bg-white p-6 rounded-lg shadow transition-shadow hover:shadow-md cursor-pointer h-full">
             <div className="flex items-start justify-between gap-3">

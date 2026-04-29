@@ -183,6 +183,7 @@ export async function GET(request: Request) {
       mostCommonLevel,
       improved: improvedStudents,
       improvedCount: improvedStudents.length,
+      improvedThisMonth: improvedStudents.length,
       monthlyUpdates: {
         month: selectedMonth,
         monthStatus,
