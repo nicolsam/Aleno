@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl'
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
+import ActionListSkeleton from '@/components/skeletons/ActionListSkeleton'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -288,7 +288,7 @@ export default function DashboardActionListPage({
     ? stats?.needAttention || []
     : stats?.monthlyUpdates.missingStudents || []
   if (loading) {
-    return <DashboardSkeleton />
+    return <ActionListSkeleton />
   }
 
   return (
