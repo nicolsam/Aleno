@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Pencil, Trash2 } from "lucide-react"
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -60,6 +61,13 @@ export default function ClassesPage() {
   
   const [editingClass, setEditingClass] = useState<ClassRecord | null>(null)
   const [deletingClassId, setDeletingClassId] = useState<string | null>(null)
+
+  const handleSchoolFilterChange = (value: string) => {
+    const nextSchoolId = value === '__all__' ? '' : value
+    setSchoolId(nextSchoolId)
+    localStorage.setItem('selectedSchool', nextSchoolId)
+    window.dispatchEvent(new Event('schoolChanged'))
+  }
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -204,17 +212,6 @@ export default function ClassesPage() {
     return <div className="p-8 text-center">{tCommon('loading')}...</div>
   }
 
-  if (schools.length === 0) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-700 mb-4">{t('needSchool')}</p>
-        <a href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
-          {tCommon('createSchool')}
-        </a>
-      </div>
-    )
-  }
-
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -228,23 +225,53 @@ export default function ClassesPage() {
       </div>
 
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
-        <label className="block text-sm text-gray-600 mb-1">{t('academicYear')}</label>
-        <Select
-          value={academicYearFilter}
-          onValueChange={setAcademicYearFilter}
-        >
-          <SelectTrigger className="w-full max-w-xs">
-            <SelectValue placeholder={t('academicYear')} />
-          </SelectTrigger>
-          <SelectContent>
-            {availableAcademicYears.map((year) => (
-              <SelectItem key={year} value={String(year)}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="grid gap-4 md:flex md:flex-wrap md:items-end">
+          <div className="space-y-1 md:w-56">
+            <Label className="text-gray-700">{t('school')}</Label>
+            <Select value={schoolId || '__all__'} onValueChange={handleSchoolFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('selectSchool')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('all')}</SelectItem>
+                {schools.map((school) => (
+                  <SelectItem key={school.id} value={school.id}>
+                    {school.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-36">
+            <Label className="text-gray-700">{t('academicYear')}</Label>
+            <Select
+              value={academicYearFilter}
+              onValueChange={setAcademicYearFilter}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('academicYear')} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableAcademicYears.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </div>
+
+      {schools.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-700 mb-4">{t('needSchool')}</p>
+          <a href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
+            {tCommon('createSchool')}
+          </a>
+        </div>
+      ) : (
+        <>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
         <table className="w-full">
@@ -454,6 +481,8 @@ export default function ClassesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+        </>
+      )}
     </div>
   )
 }

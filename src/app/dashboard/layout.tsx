@@ -92,9 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
-  // Only show school filter on pages that need it
-  const filterPages = ['/dashboard', '/dashboard/classes']
-  const showFilter = filterPages.includes(pathname) && schools.length > 0
+
 
   return (
     <div className="min-h-screen flex">
@@ -151,25 +149,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="w-8 h-8 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
           </div>
         ) : (
-          <>
-            {showFilter && (
-              <div className="mb-6 flex items-center gap-4">
-                <select
-                  value={selectedSchool}
-                  onChange={(e) => setSelectedSchool(e.target.value)}
-                  className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">{locale === 'en' ? 'All Schools' : 'Todas as Escolas'}</option>
-                  {schools.map((school) => (
-                    <option key={school.id} value={school.id}>
-                      {school.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            {children}
-          </>
+          children
         )}
       </main>
     </div>

@@ -58,6 +58,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const t = useTranslations()
   const [stats, setStats] = useState<Stats | null>(null)
+  const [schools, setSchools] = useState<{ id: string; name: string }[]>([])
   const [schoolId, setSchoolId] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(getMonthKey())
   const [selectedYear, setSelectedYear] = useState(String(getYearFromMonthKey(getMonthKey())))
@@ -80,6 +81,13 @@ export default function DashboardPage() {
 
     setSelectedYear(year)
     setSelectedMonth(buildMonthKey(nextMonth, year))
+  }
+
+  const handleSchoolFilterChange = (value: string) => {
+    const nextSchoolId = value === '__all__' ? '' : value
+    setSchoolId(nextSchoolId)
+    localStorage.setItem('selectedSchool', nextSchoolId)
+    window.dispatchEvent(new Event('schoolChanged'))
   }
 
   useEffect(() => {
@@ -105,6 +113,14 @@ export default function DashboardPage() {
       if (!token) return
 
       setLoading(true)
+      const schoolsRes = await fetch('/api/schools', {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      const schoolsData = await schoolsRes.json()
+      if (schoolsRes.ok && schoolsData.schools) {
+        setSchools(schoolsData.schools)
+      }
+
       const classParams = new URLSearchParams()
       if (schoolId) classParams.set('schoolId', schoolId)
       const classUrl = `/api/classes${classParams.toString() ? `?${classParams.toString()}` : ''}`
@@ -149,18 +165,7 @@ export default function DashboardPage() {
     return <DashboardSkeleton />
   }
 
-  if (!stats || stats.totalStudents === 0) {
-    return (
-      <div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-6">{t('dashboard.title')}</h1>
-        <div className="bg-white p-8 rounded-lg shadow text-center text-gray-700">
-          {t('dashboard.noData')}
-        </div>
-      </div>
-    )
-  }
-
-  const isCurrent = stats.monthlyUpdates.monthStatus === 'current'
+  const isCurrent = stats?.monthlyUpdates.monthStatus === 'current'
   const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', {
     month: selectedMonth,
     schoolId,
@@ -174,13 +179,32 @@ export default function DashboardPage() {
 
   return (
     <div>
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{t('dashboard.title')}</h1>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="space-y-1">
+      </div>
+
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="grid gap-4 md:flex md:flex-wrap md:items-end">
+          <div className="space-y-1 md:w-56">
+            <Label className="text-gray-700">{t('classes.school')}</Label>
+            <Select value={schoolId || '__all__'} onValueChange={handleSchoolFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('classes.selectSchool')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('classes.all')}</SelectItem>
+                {schools.map((school) => (
+                  <SelectItem key={school.id} value={school.id}>
+                    {school.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-28">
             <Label className="text-gray-700">{t('dashboard.monthFilter')}</Label>
             <Select value={selectedMonthPart} onValueChange={handleMonthPartChange}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder={t('dashboard.monthFilter')} />
               </SelectTrigger>
               <SelectContent>
@@ -192,10 +216,10 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 md:w-36">
             <Label className="text-gray-700">{t('classes.academicYear')}</Label>
             <Select value={selectedYear} onValueChange={handleYearChange}>
-              <SelectTrigger className="w-32">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder={t('classes.academicYear')} />
               </SelectTrigger>
               <SelectContent>
@@ -209,6 +233,13 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {!stats || stats.totalStudents === 0 ? (
+        <div className="bg-white p-8 rounded-lg shadow text-center text-gray-700">
+          {t('dashboard.noData')}
+        </div>
+      ) : (
+        <>
 
       {/* Current month: urgent warning banner */}
       {isCurrent && stats.monthlyUpdates.missingCount > 0 && (
@@ -337,6 +368,8 @@ export default function DashboardPage() {
         </div>
       </div>
 
+        </>
+      )}
     </div>
   )
 }
