@@ -49,7 +49,8 @@
     "monthlyUpdated": "Atualizado este mês",
     "monthlyMissing": "Precisa atualização mensal",
     "monthlyUpdatedPast": "Atualizado neste mês",
-    "monthlyMissingPast": "Sem atualização registrada"
+    "monthlyMissingPast": "Sem atualização registrada",
+    "assessmentDate": "Data da avaliação"
   },
   "classes": {
     "title": "Turmas",
@@ -58,6 +59,7 @@
     "grade": "Ano/Série",
     "section": "Turma (Letra)",
     "shift": "Turno",
+    "academicYear": "Ano letivo",
     "school": "Escola",
     "noClasses": "Nenhuma turma ainda. Adicione sua primeira turma.",
     "needSchool": "Você precisa criar uma escola primeiro.",

@@ -17,7 +17,15 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Pencil, Trash2 } from "lucide-react"
 import { getReadingLevelStyle } from '@/lib/reading-levels'
-import { getMonthKey, toInputMonth, fromInputMonth } from '@/lib/monthly-updates'
+import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
+import {
+  buildMonthKey,
+  getAvailableMonthOptions,
+  getDefaultAssessmentDateForMonth,
+  getMonthKey,
+  getMonthPartFromMonthKey,
+  getYearFromMonthKey,
+} from '@/lib/monthly-updates'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -35,6 +43,7 @@ interface ClassRecord {
   grade: string
   section: string
   shift: string
+  academicYear: number
   schoolId: string
 }
 
@@ -53,6 +62,7 @@ interface Student {
   monthlyUpdateStatus?: 'updated' | 'missing'
   monthStatus?: 'current' | 'past'
   selectedMonth?: string
+  selectedAcademicYear?: number
   latestAssessmentDate?: string | null
 }
 
@@ -70,6 +80,7 @@ interface School {
 
 const VALID_SHIFTS = ['Morning', 'Afternoon', 'Night']
 const VALID_GRADES = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano', '1ª Série', '2ª Série', '3ª Série']
+const DEFAULT_ACADEMIC_YEAR = getDefaultAcademicYear()
 
 export default function StudentsPage() {
   const router = useRouter()
@@ -83,21 +94,42 @@ export default function StudentsPage() {
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [schools, setSchools] = useState<School[]>([])
+  const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [schoolId, setSchoolId] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(() => {
     if (typeof window === 'undefined') return getMonthKey()
     return new URLSearchParams(window.location.search).get('month') || getMonthKey()
   })
+  const [selectedYear, setSelectedYear] = useState(() => {
+    if (typeof window === 'undefined') return String(DEFAULT_ACADEMIC_YEAR)
+    const month = new URLSearchParams(window.location.search).get('month')
+    const year = month && /^\d{2}\/\d{4}$/.test(month) ? getYearFromMonthKey(month) : DEFAULT_ACADEMIC_YEAR
+    return ACADEMIC_YEARS.includes(year) ? String(year) : String(DEFAULT_ACADEMIC_YEAR)
+  })
+  const selectedMonthPart = getMonthPartFromMonthKey(selectedMonth)
+  const selectedAcademicYear = Number(selectedYear)
+  const availableMonths = getAvailableMonthOptions(selectedAcademicYear)
+  const maxAssessmentDate = getDefaultAssessmentDateForMonth(getMonthKey())
 
-  /** Max value for the HTML month picker — clamped to the current month. */
-  const maxInputMonth = toInputMonth(getMonthKey())
+  const handleMonthPartChange = (month: string) => {
+    setSelectedMonth(buildMonthKey(month, selectedYear))
+  }
 
-  const handleMonthChange = (inputValue: string) => {
-    if (!inputValue) {
-      setSelectedMonth(getMonthKey())
-      return
-    }
-    setSelectedMonth(fromInputMonth(inputValue))
+  const handleYearChange = (year: string) => {
+    const yearMonths = getAvailableMonthOptions(Number(year))
+    const nextMonth = yearMonths.some((month) => month.value === selectedMonthPart)
+      ? selectedMonthPart
+      : yearMonths.at(-1)?.value || getMonthPartFromMonthKey(getMonthKey())
+
+    setSelectedYear(year)
+    setSelectedMonth(buildMonthKey(nextMonth, year))
+  }
+
+  const handleSchoolFilterChange = (value: string) => {
+    const nextSchoolId = value === '__all__' ? '' : value
+    setSchoolId(nextSchoolId)
+    localStorage.setItem('selectedSchool', nextSchoolId)
+    window.dispatchEvent(new Event('schoolChanged'))
   }
   const [loading, setLoading] = useState(true)
   const [showModal, setShowModal] = useState(false)
@@ -109,7 +141,7 @@ export default function StudentsPage() {
   const [shiftFilter, setShiftFilter] = useState('')
 
   const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', classId: '' })
-  const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '' })
+  const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '', recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()) })
 
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [deletingStudentId, setDeletingStudentId] = useState<string | null>(null)
@@ -143,11 +175,24 @@ export default function StudentsPage() {
         setSchools(schoolsData.schools || [])
       }
 
-      const classesUrl = schoolId ? `/api/classes?schoolId=${schoolId}` : '/api/classes'
+      const classParams = new URLSearchParams({ academicYear: String(selectedAcademicYear) })
+      if (schoolId) classParams.set('schoolId', schoolId)
+      const classesUrl = `/api/classes?${classParams.toString()}`
       const classesRes = await fetch(classesUrl, { headers: { Authorization: `Bearer ${token}` } })
       if (classesRes.ok) {
         const classesData = await classesRes.json()
         setClasses(classesData.classes || [])
+        const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
+        setAvailableAcademicYears(years)
+        if (years.length > 0 && !years.includes(selectedAcademicYear)) {
+          const yearMonths = getAvailableMonthOptions(years[0])
+          const nextMonth = yearMonths.some((month) => month.value === selectedMonthPart)
+            ? selectedMonthPart
+            : yearMonths.at(-1)?.value || getMonthPartFromMonthKey(getMonthKey())
+
+          setSelectedYear(String(years[0]))
+          setSelectedMonth(buildMonthKey(nextMonth, years[0]))
+        }
       }
 
       const params = new URLSearchParams()
@@ -156,6 +201,7 @@ export default function StudentsPage() {
       if (sectionFilter) params.append('section', sectionFilter)
       if (shiftFilter) params.append('shift', shiftFilter)
       params.append('month', selectedMonth)
+      params.append('academicYear', String(selectedAcademicYear))
 
       const studentsUrl = `/api/students${params.toString() ? `?${params.toString()}` : ''}`
 
@@ -173,7 +219,7 @@ export default function StudentsPage() {
       setLoading(false)
     }
     fetchData()
-  }, [schoolId, gradeFilter, sectionFilter, shiftFilter, selectedMonth])
+  }, [schoolId, gradeFilter, sectionFilter, shiftFilter, selectedMonth, selectedAcademicYear, selectedMonthPart])
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -290,7 +336,7 @@ export default function StudentsPage() {
 
   const formatClassName = (c?: ClassRecord) => {
     if (!c) return 'N/A'
-    return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)})`
+    return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)}) - ${c.academicYear}`
   }
 
   if (loading) {
@@ -317,49 +363,91 @@ export default function StudentsPage() {
         </Button>
       </div>
 
-      <div className="flex gap-4 mb-6 bg-white p-4 rounded-lg shadow">
-        <div className="flex-1 space-y-1">
-          <Label>{tClasses('grade')}</Label>
-          <Select value={gradeFilter} onValueChange={(value) => setGradeFilter(value === '__all__' ? '' : value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={tClasses('all')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">{tClasses('all')}</SelectItem>
-              {VALID_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-            </SelectContent>
-          </Select>
+      <div className="mb-6 space-y-4 bg-white p-4 rounded-lg shadow">
+        <div className="grid gap-4 md:flex md:flex-wrap md:items-end">
+          <div className="space-y-1 md:w-56">
+            <Label>{tClasses('school')}</Label>
+            <Select value={schoolId || '__all__'} onValueChange={handleSchoolFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={tClasses('selectSchool')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+                {schools.map((school) => (
+                  <SelectItem key={school.id} value={school.id}>
+                    {school.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-56">
+            <Label>{tClasses('grade')}</Label>
+            <Select value={gradeFilter} onValueChange={(value) => setGradeFilter(value === '__all__' ? '' : value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={tClasses('all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+                {VALID_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-28">
+            <Label>{tClasses('section')}</Label>
+            <Input
+              type="text"
+              value={sectionFilter}
+              onChange={e => setSectionFilter(e.target.value.toUpperCase())}
+              maxLength={2}
+              placeholder={tClasses('all')}
+            />
+          </div>
+          <div className="space-y-1 md:w-44">
+            <Label>{tClasses('shift')}</Label>
+            <Select value={shiftFilter} onValueChange={(value) => setShiftFilter(value === '__all__' ? '' : value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={tClasses('all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+                {VALID_SHIFTS.map(s => <SelectItem key={s} value={s}>{tClasses(`shifts.${s}`)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        <div className="flex-1 space-y-1">
-          <Label>{tClasses('section')}</Label>
-          <Input
-            type="text"
-            value={sectionFilter}
-            onChange={e => setSectionFilter(e.target.value.toUpperCase())}
-            maxLength={2}
-            placeholder={tClasses('all')}
-          />
-        </div>
-        <div className="flex-1 space-y-1">
-          <Label>{tClasses('shift')}</Label>
-          <Select value={shiftFilter} onValueChange={(value) => setShiftFilter(value === '__all__' ? '' : value)}>
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder={tClasses('all')} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">{tClasses('all')}</SelectItem>
-              {VALID_SHIFTS.map(s => <SelectItem key={s} value={s}>{tClasses(`shifts.${s}`)}</SelectItem>)}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="flex-1 space-y-1">
-          <Label>{t('monthFilter')}</Label>
-          <Input
-            type="month"
-            value={toInputMonth(selectedMonth)}
-            max={maxInputMonth}
-            onChange={(e) => handleMonthChange(e.target.value)}
-          />
+
+        <div className="grid gap-4 border-t pt-4 md:flex md:flex-wrap md:items-end">
+          <div className="space-y-1 md:w-28">
+            <Label>{t('monthFilter')}</Label>
+            <Select value={selectedMonthPart} onValueChange={handleMonthPartChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('monthFilter')} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableMonths.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>
+                    {month.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-36">
+            <Label>{tClasses('academicYear')}</Label>
+            <Select value={selectedYear} onValueChange={handleYearChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={tClasses('academicYear')} />
+              </SelectTrigger>
+              <SelectContent>
+                {availableAcademicYears.map((year) => (
+                  <SelectItem key={year} value={String(year)}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
 
@@ -423,7 +511,12 @@ export default function StudentsPage() {
                         variant="link"
                         size="sm"
                         onClick={() => {
-                          setUpdateLevel({ studentId: student.id, readingLevelId: '', notes: '' })
+                          setUpdateLevel({
+                            studentId: student.id,
+                            readingLevelId: '',
+                            notes: '',
+                            recordedAt: getDefaultAssessmentDateForMonth(selectedMonth),
+                          })
                         }}
                         className={`h-auto p-0 ${student.monthlyUpdateStatus === 'missing' ? 'text-amber-700' : 'text-blue-600'
                           }`}
@@ -580,11 +673,21 @@ export default function StudentsPage() {
                 className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring"
                 rows={3}
               />
+              <div className="space-y-1">
+                <Label>{t('assessmentDate')}</Label>
+                <Input
+                  type="date"
+                  value={updateLevel.recordedAt}
+                  max={maxAssessmentDate}
+                  onChange={(e) => setUpdateLevel({ ...updateLevel, recordedAt: e.target.value })}
+                  required
+                />
+              </div>
               <div className="flex gap-2">
                 <Button type="submit" className="flex-1">
                   {tCommon('save')}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '' })} className="flex-1">
+                <Button type="button" variant="outline" onClick={() => setUpdateLevel({ studentId: '', readingLevelId: '', notes: '', recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()) })} className="flex-1">
                   {tCommon('cancel')}
                 </Button>
               </div>
