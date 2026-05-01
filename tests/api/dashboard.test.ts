@@ -105,7 +105,7 @@ describe('API: /api/dashboard GET', () => {
 
     expect(response.status).toBe(200)
     expect(data.needAttention).toEqual([])
-    expect(data.improvedThisMonth).toBe(0)
+    expect(data.improvedCount).toBe(0)
   })
 
   it('returns monthly update counts for the selected month', async () => {
