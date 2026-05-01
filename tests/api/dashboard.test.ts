@@ -58,6 +58,24 @@ function createStudent(id: string, code: string, recordedAt = new Date('2026-04-
   }
 }
 
+function createStudentWithHistory(
+  id: string,
+  history: { code: string; recordedAt: Date; createdAt?: Date }[]
+) {
+  return {
+    ...createStudent(id, history[0].code, history[0].recordedAt),
+    readingHistory: history.map((entry) => {
+      const level = levels.find((item) => item.code === entry.code)!
+      return {
+        readingLevelId: level.id,
+        readingLevel: level,
+        recordedAt: entry.recordedAt,
+        createdAt: entry.createdAt || entry.recordedAt,
+      }
+    }),
+  }
+}
+
 describe('API: /api/dashboard GET', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -129,10 +147,35 @@ describe('API: /api/dashboard GET', () => {
       updatedCount: 1,
       missingCount: 2,
     })
+    expect(data.monthlyUpdates.missingCount).toBe(data.monthlyUpdates.missingStudents.length)
     expect(data.monthlyUpdates.missingStudents.map((student: { id: string }) => student.id)).toEqual([
       'student-2',
       'student-3',
     ])
+  })
+
+  it('returns improved students and matching improved counts for the selected month', async () => {
+    mockFindStudents.mockResolvedValue([
+      createStudentWithHistory('student-improved', [
+        { code: 'RS', recordedAt: new Date('2026-04-10T12:00:00.000Z') },
+        { code: 'RW', recordedAt: new Date('2026-03-10T12:00:00.000Z') },
+      ]),
+      createStudentWithHistory('student-same-level', [
+        { code: 'RW', recordedAt: new Date('2026-04-10T12:00:00.000Z') },
+        { code: 'RW', recordedAt: new Date('2026-03-10T12:00:00.000Z') },
+      ]),
+    ])
+
+    const request = new Request('http://localhost/api/dashboard?month=04/2026', {
+      headers: { authorization: 'Bearer valid-token' },
+    })
+    const response = await getDashboard(request)
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.improved.map((student: { id: string }) => student.id)).toEqual(['student-improved'])
+    expect(data.improvedCount).toBe(data.improved.length)
+    expect(data.improvedThisMonth).toBe(data.improved.length)
   })
 
   it('defaults monthly update counts to the current month', async () => {

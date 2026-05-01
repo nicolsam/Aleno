@@ -280,23 +280,27 @@ export default function DashboardPage() {
             {stats.mostCommonLevel ? t(`levels.${stats.mostCommonLevel}`) : '-'}
           </p>
         </div>
-        <Link href={improvedHref}>
+        <Link href={improvedHref} data-testid="dashboard-improved-card">
           <div className="bg-white p-6 rounded-lg shadow transition-shadow hover:shadow-md cursor-pointer h-full">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-gray-600 text-sm">{t('dashboard.improvedThisMonth')}</h3>
-                <p className="text-3xl font-bold text-green-600">{stats.improvedCount ?? 0}</p>
+                <p className="text-3xl font-bold text-green-600" data-testid="dashboard-improved-count">
+                  {stats.improvedCount ?? 0}
+                </p>
               </div>
               <ArrowRight className="size-4 text-muted-foreground mt-1" />
             </div>
           </div>
         </Link>
-        <Link href={needAttentionHref}>
+        <Link href={needAttentionHref} data-testid="dashboard-need-attention-card">
           <div className="bg-white p-6 rounded-lg shadow transition-shadow hover:shadow-md cursor-pointer h-full">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-gray-600 text-sm">{t('dashboard.needAttention')}</h3>
-                <p className="text-3xl font-bold text-red-600">{stats.needAttention.length}</p>
+                <p className="text-3xl font-bold text-red-600" data-testid="dashboard-need-attention-count">
+                  {stats.needAttention.length}
+                </p>
               </div>
               <ArrowRight className="size-4 text-muted-foreground mt-1" />
             </div>
@@ -315,7 +319,7 @@ export default function DashboardPage() {
             <p className="text-3xl font-bold text-green-600">{stats.monthlyUpdates.updatedCount}</p>
           </CardContent>
         </Card>
-        <Link href={missingUpdatesHref}>
+        <Link href={missingUpdatesHref} data-testid="dashboard-missing-updates-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -326,7 +330,9 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-amber-600">{stats.monthlyUpdates.missingCount}</p>
+              <p className="text-3xl font-bold text-amber-600" data-testid="dashboard-missing-updates-count">
+                {stats.monthlyUpdates.missingCount}
+              </p>
             </CardContent>
           </Card>
         </Link>

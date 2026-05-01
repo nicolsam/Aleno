@@ -17,8 +17,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link'
 import { ArrowRight, Pencil, Trash2 } from "lucide-react"
-import { getReadingLevelStyle, isAttentionReadingLevel } from '@/lib/reading-levels'
+import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
+import { getStudentMetricCounts } from '@/lib/student-metrics'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import {
@@ -354,6 +355,7 @@ export default function StudentsPage() {
   const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId })
   const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })
   const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId })
+  const studentMetrics = getStudentMetricCounts(students, selectedMonth)
 
   if (loading) {
     return <StudentsSkeleton />
@@ -472,7 +474,7 @@ export default function StudentsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Link href={needAttentionHref}>
+        <Link href={needAttentionHref} data-testid="students-need-attention-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -483,13 +485,13 @@ export default function StudentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-red-600">
-                {students.filter((s) => isAttentionReadingLevel(s.readingHistory?.[0]?.readingLevel.code)).length}
+              <p className="text-3xl font-bold text-red-600" data-testid="students-need-attention-count">
+                {studentMetrics.needAttentionCount}
               </p>
             </CardContent>
           </Card>
         </Link>
-        <Link href={missingUpdatesHref}>
+        <Link href={missingUpdatesHref} data-testid="students-missing-updates-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -500,13 +502,13 @@ export default function StudentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-amber-600">
-                {students.filter((s) => s.monthlyUpdateStatus === 'missing').length}
+              <p className="text-3xl font-bold text-amber-600" data-testid="students-missing-updates-count">
+                {studentMetrics.missingMonthlyUpdatesCount}
               </p>
             </CardContent>
           </Card>
         </Link>
-        <Link href={improvedHref}>
+        <Link href={improvedHref} data-testid="students-improved-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -517,28 +519,8 @@ export default function StudentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-600">
-                {students.filter((s) => {
-                  const history = s.readingHistory || []
-                  const assessmentsInMonth = history.filter(entry => {
-                    const d = new Date(entry.recordedAt!)
-                    const start = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]) - 1, 1)
-                    const end = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]), 0)
-                    return d >= start && d <= end
-                  })
-                  if (assessmentsInMonth.length === 0) return false
-
-                  return assessmentsInMonth.some(current => {
-                    const previous = history.find(entry => {
-                      const dCurr = new Date(current.recordedAt!)
-                      const dEntry = new Date(entry.recordedAt!)
-                      const tCurr = new Date(current.createdAt!).getTime()
-                      const tEntry = new Date(entry.createdAt!).getTime()
-                      return dEntry < dCurr || (dEntry.getTime() === dCurr.getTime() && tEntry < tCurr)
-                    })
-                    return previous && current.readingLevel.order > previous.readingLevel.order
-                  })
-                }).length}
+              <p className="text-3xl font-bold text-green-600" data-testid="students-improved-count">
+                {studentMetrics.improvedCount}
               </p>
             </CardContent>
           </Card>
