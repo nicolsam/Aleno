@@ -20,6 +20,7 @@ import { ArrowRight, Pencil, Trash2 } from "lucide-react"
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
 import { getStudentMetricCounts } from '@/lib/student-metrics'
+import { getSectionOptionsForGrade, resolveSectionFilter } from '@/lib/class-filters'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import {
@@ -144,6 +145,19 @@ export default function StudentsPage() {
   const [gradeFilter, setGradeFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
   const [shiftFilter, setShiftFilter] = useState('')
+  const sectionOptions = getSectionOptionsForGrade(classes, gradeFilter)
+
+  const handleGradeFilterChange = (value: string) => {
+    const nextGrade = value === '__all__' ? '' : value
+    const nextSectionOptions = getSectionOptionsForGrade(classes, nextGrade)
+
+    setGradeFilter(nextGrade)
+    setSectionFilter((currentSection) => resolveSectionFilter(currentSection, nextSectionOptions))
+  }
+
+  const handleSectionFilterChange = (value: string) => {
+    setSectionFilter(value === '__all__' ? '' : value)
+  }
 
   const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', classId: '' })
   const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '', recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()) })
@@ -186,7 +200,11 @@ export default function StudentsPage() {
       const classesRes = await fetch(classesUrl, { headers: { Authorization: `Bearer ${token}` } })
       if (classesRes.ok) {
         const classesData = await classesRes.json()
-        setClasses(classesData.classes || [])
+        const fetchedClasses = classesData.classes || []
+        setClasses(fetchedClasses)
+        setSectionFilter((currentSection) => (
+          resolveSectionFilter(currentSection, getSectionOptionsForGrade(fetchedClasses, gradeFilter))
+        ))
         const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
         if (years.length > 0 && !years.includes(selectedAcademicYear)) {
@@ -401,8 +419,8 @@ export default function StudentsPage() {
           </div>
           <div className="space-y-1 md:w-56">
             <Label>{tClasses('grade')}</Label>
-            <Select value={gradeFilter} onValueChange={(value) => setGradeFilter(value === '__all__' ? '' : value)}>
-              <SelectTrigger className="w-full">
+            <Select value={gradeFilter || '__all__'} onValueChange={handleGradeFilterChange}>
+              <SelectTrigger className="w-full" data-testid="students-grade-filter">
                 <SelectValue placeholder={tClasses('all')} />
               </SelectTrigger>
               <SelectContent>
@@ -413,18 +431,24 @@ export default function StudentsPage() {
           </div>
           <div className="space-y-1 md:w-28">
             <Label>{tClasses('section')}</Label>
-            <Input
-              type="text"
-              value={sectionFilter}
-              onChange={e => setSectionFilter(e.target.value.toUpperCase())}
-              maxLength={2}
-              placeholder={tClasses('all')}
-            />
+            <Select value={sectionFilter || '__all__'} onValueChange={handleSectionFilterChange}>
+              <SelectTrigger className="w-full" data-testid="students-section-filter">
+                <SelectValue placeholder={tClasses('all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+                {sectionOptions.map((section) => (
+                  <SelectItem key={section} value={section}>
+                    {section}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1 md:w-44">
             <Label>{tClasses('shift')}</Label>
             <Select value={shiftFilter} onValueChange={(value) => setShiftFilter(value === '__all__' ? '' : value)}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-testid="students-shift-filter">
                 <SelectValue placeholder={tClasses('all')} />
               </SelectTrigger>
               <SelectContent>
