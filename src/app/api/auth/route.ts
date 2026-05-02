@@ -21,7 +21,7 @@ export async function POST(request: Request) {
 
       const user = await prisma.user.findUnique({
         where: { email },
-        include: { schools: true },
+        include: { schools: { include: { school: { select: { name: true } } } } },
       })
       if (!user) {
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
@@ -51,7 +51,11 @@ export async function POST(request: Request) {
         name: user.name,
         email: user.email,
         isGlobalAdmin: user.isGlobalAdmin,
-        schools: (user.schools || []).map((school) => ({ schoolId: school.schoolId, role: school.role })),
+        schools: (user.schools || []).map((school) => ({
+          schoolId: school.schoolId,
+          schoolName: school.school?.name,
+          role: school.role,
+        })),
       }
 
       return NextResponse.json({ token, user: authUser, teacher: authUser })

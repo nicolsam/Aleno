@@ -7,13 +7,22 @@ import { useTranslations } from 'next-intl'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
 import { canManageSchools, canManageTeachers, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
-interface School { id: string }
+interface School {
+  id: string
+  name: string
+}
+
+type SidebarAssignment = {
+  schoolName: string
+  role: string
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const t = useTranslations('nav')
   const [selectedSchool, setSelectedSchool] = useState<string>('')
+  const [schools, setSchools] = useState<School[]>([])
   const [user, setUser] = useState<StoredUser | null>(null)
   const [mounted, setMounted] = useState(false)
 
@@ -62,6 +71,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       })
       const data = await res.json()
       if (res.ok && data.schools) {
+        setSchools(data.schools)
         const stored = localStorage.getItem('selectedSchool')
         if (stored && data.schools.find((s: School) => s.id === stored)) {
           setSelectedSchool(stored)
@@ -88,6 +98,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
+  const sidebarAssignments: SidebarAssignment[] = user?.isGlobalAdmin ? [] : (user?.schools || [])
+    .map((assignment) => ({
+      schoolName: assignment.schoolName || schools.find((school) => school.id === assignment.schoolId)?.name || '',
+      role: assignment.role,
+    }))
+    .filter((assignment) => assignment.schoolName)
 
 
   return (
@@ -96,6 +112,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="p-4">
           <h1 className="text-xl font-bold">Aleno</h1>
           {user && mounted && <p className="text-sm text-gray-300 mt-1">{user.name}</p>}
+          {mounted && sidebarAssignments.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {sidebarAssignments.map((assignment) => (
+                <div
+                  key={`${assignment.schoolName}-${assignment.role}`}
+                  className="rounded-md border border-gray-700 bg-gray-900/50 px-3 py-2"
+                >
+                  <p className="truncate text-sm font-medium text-white">{assignment.schoolName}</p>
+                  <p className="mt-1 inline-flex rounded-sm bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-100">
+                    {t(`roles.${assignment.role}`)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <nav className="mt-4 flex-1 overflow-y-auto custom-scrollbar">
           <Link

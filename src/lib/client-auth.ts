@@ -3,7 +3,7 @@ export type StoredUser = {
   name: string
   email: string
   isGlobalAdmin?: boolean
-  schools?: { schoolId: string; role: string }[]
+  schools?: { schoolId: string; schoolName?: string; role: string }[]
 }
 
 export function getStoredUser(): StoredUser | null {
