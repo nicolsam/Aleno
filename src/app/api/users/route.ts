@@ -96,6 +96,7 @@ export async function GET(request: Request) {
         schoolName: invite.school.name,
         expiresAt: invite.expiresAt,
         createdAt: invite.createdAt,
+        inviteLink: invite.token ? buildInviteUrl(request, invite.token) : null,
       })),
     })
   } catch (error) {
@@ -144,6 +145,7 @@ export async function POST(request: Request) {
         email,
         role,
         schoolId,
+        token,
         tokenHash: hashInviteToken(token),
         expiresAt: getInviteExpirationDate(),
         createdById: auth.user.id,
@@ -163,6 +165,7 @@ export async function POST(request: Request) {
         schoolId: invite.schoolId,
         schoolName: invite.school.name,
         expiresAt: invite.expiresAt,
+        inviteLink: buildInviteUrl(request, token),
       },
       inviteLink: buildInviteUrl(request, token),
     })
