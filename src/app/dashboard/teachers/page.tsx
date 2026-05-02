@@ -5,6 +5,16 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Copy, Pencil, Trash2, UserPlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,6 +50,11 @@ type PendingInvite = {
   inviteLink?: string | null
 }
 
+type PendingUnassign = {
+  managedUser: ManagedUser
+  schoolId: string
+}
+
 const ROLE_TEACHER = 'TEACHER'
 const ROLE_COORDINATOR = 'COORDINATOR'
 type InviteModalStep = 'form' | 'link'
@@ -60,6 +75,7 @@ export default function TeachersPage() {
   const [form, setForm] = useState({ name: '', email: '', role: ROLE_TEACHER })
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null)
   const [editForm, setEditForm] = useState({ name: '', email: '' })
+  const [pendingUnassign, setPendingUnassign] = useState<PendingUnassign | null>(null)
 
   const isGlobalAdmin = Boolean(user?.isGlobalAdmin)
 
@@ -187,9 +203,12 @@ export default function TeachersPage() {
     toast.success(t('inviteCreated'))
   }
 
-  const handleUnassign = async (managedUser: ManagedUser, targetSchoolId: string) => {
+  const handleUnassign = async () => {
     const token = localStorage.getItem('token')
-    if (!token) return
+    if (!token || !pendingUnassign) return
+
+    const { managedUser, schoolId: targetSchoolId } = pendingUnassign
+    setPendingUnassign(null)
 
     const response = await fetch(`/api/users/${managedUser.id}/schools/${targetSchoolId}`, {
       method: 'DELETE',
@@ -443,7 +462,7 @@ export default function TeachersPage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleUnassign(managedUser, school.schoolId)}
+                        onClick={() => setPendingUnassign({ managedUser, schoolId: school.schoolId })}
                         title={t('unassign')}
                       >
                         <Trash2 className="size-4" />
@@ -489,6 +508,21 @@ export default function TeachersPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={!!pendingUnassign} onOpenChange={(open) => !open && setPendingUnassign(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription>{tCommon('deleteWarning')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnassign} className="bg-red-600 hover:bg-red-700">
+              {tCommon('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
