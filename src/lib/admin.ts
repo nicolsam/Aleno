@@ -1,22 +1,17 @@
-import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
-import { NextResponse } from 'next/server'
+import { type NextResponse } from 'next/server'
+import { forbiddenResponse, isAuthFailure, requireAuth, type AuthUser } from '@/lib/permissions'
 
-export async function verifyAdmin(request: Request) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (!token) {
-    return { error: NextResponse.json({ error: 'Unauthorized' }, { status: 401 }) }
+type AdminAuthResult =
+  | { error: NextResponse; payload?: never; user?: never; teacher?: never }
+  | { error?: never; payload: { id: string; email: string }; user: AuthUser; teacher: AuthUser }
+
+export async function verifyAdmin(request: Request): Promise<AdminAuthResult> {
+  const auth = await requireAuth(request)
+  if (isAuthFailure(auth)) return auth
+
+  if (!auth.user.isGlobalAdmin) {
+    return { error: forbiddenResponse() }
   }
 
-  const payload = verifyToken(token)
-  if (!payload) {
-    return { error: NextResponse.json({ error: 'Invalid token' }, { status: 401 }) }
-  }
-
-  const teacher = await prisma.teacher.findUnique({ where: { id: payload.id } })
-  if (!teacher || !teacher.isGlobalAdmin) {
-    return { error: NextResponse.json({ error: 'Forbidden' }, { status: 403 }) }
-  }
-
-  return { payload, teacher }
+  return { payload: auth.payload, user: auth.user, teacher: auth.user }
 }

@@ -1,45 +1,17 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { hashPassword, verifyPassword, generateToken } from '@/lib/auth'
+import { verifyPassword, generateToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
 
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { action, name, email, password } = body
+    const { action, email, password } = body
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
     const userAgent = request.headers.get('user-agent') || 'Unknown'
 
     if (action === 'register') {
-      if (!name || !email || !password) {
-        return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
-      }
-
-      const existing = await prisma.teacher.findUnique({ where: { email } })
-      if (existing) {
-        return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
-      }
-
-      const hashedPassword = await hashPassword(password)
-      const teacher = await prisma.teacher.create({
-        data: { name, email, password: hashedPassword },
-      })
-
-      const token = generateToken({ id: teacher.id, email: teacher.email })
-
-      await prisma.userSession.create({
-        data: {
-          teacherId: teacher.id,
-          token,
-          ipAddress,
-          userAgent,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-        }
-      })
-
-      await logAction(teacher.id, 'REGISTER', { email }, ipAddress)
-
-      return NextResponse.json({ token, teacher: { id: teacher.id, name: teacher.name, email: teacher.email, isGlobalAdmin: teacher.isGlobalAdmin } })
+      return NextResponse.json({ error: 'Registration is invite-only' }, { status: 403 })
     }
 
     if (action === 'login') {
@@ -47,21 +19,24 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
       }
 
-      const teacher = await prisma.teacher.findUnique({ where: { email } })
-      if (!teacher) {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        include: { schools: true },
+      })
+      if (!user) {
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
       }
 
-      const valid = await verifyPassword(password, teacher.password)
+      const valid = await verifyPassword(password, user.password)
       if (!valid) {
         return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
       }
 
-      const token = generateToken({ id: teacher.id, email: teacher.email })
+      const token = generateToken({ id: user.id, email: user.email })
 
       await prisma.userSession.create({
         data: {
-          teacherId: teacher.id,
+          userId: user.id,
           token,
           ipAddress,
           userAgent,
@@ -69,9 +44,17 @@ export async function POST(request: Request) {
         }
       })
 
-      await logAction(teacher.id, 'LOGIN', { email }, ipAddress)
+      await logAction(user.id, 'LOGIN', { email }, ipAddress)
 
-      return NextResponse.json({ token, teacher: { id: teacher.id, name: teacher.name, email: teacher.email, isGlobalAdmin: teacher.isGlobalAdmin } })
+      const authUser = {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        isGlobalAdmin: user.isGlobalAdmin,
+        schools: (user.schools || []).map((school) => ({ schoolId: school.schoolId, role: school.role })),
+      }
+
+      return NextResponse.json({ token, user: authUser, teacher: authUser })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })

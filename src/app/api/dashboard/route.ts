@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
 import { isAttentionReadingLevel } from '@/lib/reading-levels'
+import { getAccessibleSchoolIds, isAuthFailure, requireAuth } from '@/lib/permissions'
 import {
   getLatestAssessmentDate,
   getYearFromMonthKey,
@@ -11,32 +11,15 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
 
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
     const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
     const selectedAcademicYear = getYearFromMonthKey(selectedMonth)
 
-    let schoolIds: string[] = []
-
-    if (schoolId) {
-      schoolIds = [schoolId]
-    } else {
-      const teacherSchools = await prisma.teacherSchool.findMany({
-        where: { teacherId: payload.id, school: { deletedAt: null } },
-        select: { schoolId: true },
-      })
-      schoolIds = teacherSchools.map((ts) => ts.schoolId)
-    }
+    const schoolIds = await getAccessibleSchoolIds(auth.user, schoolId)
 
     if (schoolIds.length === 0) {
       return NextResponse.json({ 

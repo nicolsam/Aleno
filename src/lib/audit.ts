@@ -1,12 +1,13 @@
+import { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
 
-export async function logAction(teacherId: string, action: string, details?: any, ipAddress?: string) {
+export async function logAction(userId: string, action: string, details?: unknown, ipAddress?: string) {
   try {
     await prisma.auditLog.create({
       data: {
-        teacherId,
+        userId,
         action,
-        details: details ? JSON.parse(JSON.stringify(details)) : null,
+        details: details ? JSON.parse(JSON.stringify(details)) as Prisma.InputJsonValue : Prisma.JsonNull,
         ipAddress,
       }
     })

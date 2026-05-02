@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { Prisma } from '@prisma/client'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
 import { getAcademicYearStartDate, parseAcademicYear } from '@/lib/enrollments'
+import { forbiddenResponse, getAccessibleSchoolIds, isAuthFailure, isCoordinatorForSchool, requireAuth } from '@/lib/permissions'
 import {
   getLatestAssessmentDate,
   getYearFromMonthKey,
@@ -13,10 +13,8 @@ import {
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const payload = verifyToken(token)
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
 
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
@@ -26,19 +24,7 @@ export async function GET(request: Request) {
     const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
     const selectedAcademicYear = parseAcademicYear(searchParams.get('academicYear')) || getYearFromMonthKey(selectedMonth)
 
-    let validSchoolIds: string[] = []
-
-    if (schoolId) {
-      const ts = await prisma.teacherSchool.findUnique({
-        where: { teacherId_schoolId: { teacherId: payload.id, schoolId } }
-      })
-      if (ts) validSchoolIds = [schoolId]
-    } else {
-      const ts = await prisma.teacherSchool.findMany({
-        where: { teacherId: payload.id, school: { deletedAt: null } }
-      })
-      validSchoolIds = ts.map(t => t.schoolId)
-    }
+    const validSchoolIds = await getAccessibleSchoolIds(auth.user, schoolId)
 
     const classFilters: Prisma.ClassWhereInput = { deletedAt: null }
     classFilters.academicYear = selectedAcademicYear
@@ -111,10 +97,8 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const payload = verifyToken(token)
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
 
     const { name, studentNumber, classId } = await request.json()
 
@@ -125,10 +109,7 @@ export async function POST(request: Request) {
     const classRecord = await prisma.class.findUnique({ where: { id: classId } })
     if (!classRecord) return NextResponse.json({ error: 'Class not found' }, { status: 404 })
 
-    const ts = await prisma.teacherSchool.findUnique({
-      where: { teacherId_schoolId: { teacherId: payload.id, schoolId: classRecord.schoolId } }
-    })
-    if (!ts) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!isCoordinatorForSchool(auth.user, classRecord.schoolId)) return forbiddenResponse()
 
     const existingStudent = await prisma.student.findUnique({
       where: { studentNumber_schoolId: { studentNumber, schoolId: classRecord.schoolId } }
@@ -160,7 +141,7 @@ export async function POST(request: Request) {
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    await logAction(payload.id, 'CREATE_STUDENT', { studentId: student.id, name }, ipAddress)
+    await logAction(auth.user.id, 'CREATE_STUDENT', { studentId: student.id, name }, ipAddress)
 
     return NextResponse.json({ student })
   } catch (error) {

@@ -1,13 +1,11 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
+import { forbiddenResponse, hasSchoolAccess, isAuthFailure, requireAuth } from '@/lib/permissions'
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const payload = verifyToken(token)
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
 
     const { id } = await params
 
@@ -21,10 +19,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     if (!student) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-    const teacherSchool = await prisma.teacherSchool.findUnique({
-      where: { teacherId_schoolId: { teacherId: payload.id, schoolId: student.schoolId } },
-    })
-    if (!teacherSchool) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    if (!hasSchoolAccess(auth.user, student.schoolId)) return forbiddenResponse()
 
     const history = await prisma.studentReadingHistory.findMany({
       where: { studentId: id },
@@ -34,11 +29,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       ],
       include: {
         readingLevel: true,
-        teacher: { select: { name: true } },
+        user: { select: { name: true } },
       },
     })
 
-    return NextResponse.json({ student, history })
+    return NextResponse.json({
+      student,
+      history: history.map((entry) => ({ ...entry, teacher: entry.user })),
+    })
   } catch (error) {
     console.error('Student history error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
