@@ -6,8 +6,8 @@ import { verifyToken } from '@/lib/auth'
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: { findUnique: vi.fn() },
-    teacherSchool: { findUnique: vi.fn(), findMany: vi.fn() },
+    user: { findUnique: vi.fn() },
+    userSchool: { findUnique: vi.fn(), findMany: vi.fn() },
     class: { findMany: vi.fn(), findUnique: vi.fn(), create: vi.fn(), update: vi.fn() },
     auditLog: { create: vi.fn() }
   }
@@ -33,12 +33,22 @@ describe('Classes API', () => {
 
   const mockAccess = () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'teacher-1',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'COORDINATOR' }],
+    } as never)
+    vi.mocked(prisma.userSchool.findUnique).mockResolvedValue({} as never)
   }
 
   it('GET returns only academic years that exist in accessible classes', async () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
-    vi.mocked(prisma.teacherSchool.findMany).mockResolvedValue([{ schoolId: 'school-1' }] as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'teacher-1',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'TEACHER' }],
+    } as never)
+    vi.mocked(prisma.userSchool.findMany).mockResolvedValue([{ schoolId: 'school-1' }] as never)
     vi.mocked(prisma.class.findMany)
       .mockResolvedValueOnce([
         { academicYear: 2026 },

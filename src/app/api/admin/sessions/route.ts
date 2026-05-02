@@ -10,7 +10,7 @@ export async function GET(request: Request) {
     const sessions = await prisma.userSession.findMany({
       orderBy: { lastActiveAt: 'desc' },
       include: {
-        teacher: {
+        user: {
           select: { name: true, email: true }
         }
       },
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000)
     const formattedSessions = sessions.map(session => ({
       ...session,
+      teacher: session.user,
       isActive: session.lastActiveAt >= fiveMinutesAgo
     }))
 

@@ -14,15 +14,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    // Touch Teacher lastActiveAt
-    await prisma.teacher.update({
+    // Touch User lastActiveAt
+    await prisma.user.update({
       where: { id: payload.id },
       data: { lastActiveAt: new Date() }
     })
 
     // Touch UserSession lastActiveAt
     await prisma.userSession.updateMany({
-      where: { token, teacherId: payload.id },
+      where: { token, userId: payload.id },
       data: { lastActiveAt: new Date() }
     })
 

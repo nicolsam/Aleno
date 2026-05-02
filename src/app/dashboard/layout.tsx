@@ -2,39 +2,50 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useTranslations, useLocale } from 'next-intl'
+import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { canManageSchools, canManageTeachers, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
 interface School {
   id: string
   name: string
-  address?: string
+}
+
+type SidebarAssignment = {
+  schoolName: string
+  role: string
+}
+
+function getRoleLabelNamespace(gender: string | null | undefined): string {
+  if (gender === 'FEMALE') return 'rolesFemale'
+  if (gender === 'MALE') return 'rolesMale'
+  return 'roles'
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const t = useTranslations('nav')
-  const locale = useLocale()
-  const [schools, setSchools] = useState<School[]>([])
   const [selectedSchool, setSelectedSchool] = useState<string>('')
-  const [teacher, setTeacher] = useState<{ name: string; email: string; isGlobalAdmin?: boolean } | null>(null)
+  const [schools, setSchools] = useState<School[]>([])
+  const [user, setUser] = useState<StoredUser | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    queueMicrotask(() => setMounted(true))
   }, [])
 
   useEffect(() => {
     if (!mounted) return
 
-    const storedTeacher = localStorage.getItem('teacher')
     const token = localStorage.getItem('token')
-    if (!storedTeacher || !token) {
+    const storedUser = getStoredUser()
+    if (!storedUser || !token) {
       router.push('/login')
       return
     }
-    setTeacher(JSON.parse(storedTeacher))
+    queueMicrotask(() => setUser(storedUser))
 
     // Heartbeat mechanism to keep session active
     const sendHeartbeat = async () => {
@@ -87,52 +98,85 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     localStorage.removeItem('teacher')
     localStorage.removeItem('selectedSchool')
     router.push('/login')
   }
 
+  const roleLabelNamespace = getRoleLabelNamespace(user?.gender)
+  const sidebarAssignments: SidebarAssignment[] = user?.isGlobalAdmin ? [] : (user?.schools || [])
+    .map((assignment) => ({
+      schoolName: assignment.schoolName || schools.find((school) => school.id === assignment.schoolId)?.name || '',
+      role: assignment.role,
+    }))
+    .filter((assignment) => assignment.schoolName)
 
 
   return (
     <div className="min-h-screen flex">
       <aside className="w-64 bg-gray-800 text-white h-screen sticky top-0 flex flex-col flex-shrink-0">
         <div className="p-4">
-          <h1 className="text-xl font-bold">Aleno</h1>
-          {teacher && mounted && <p className="text-sm text-gray-300 mt-1">{teacher.name}</p>}
+          <h1 className="text-xl font-bold">Alfabetiza</h1>
+          {user && mounted && <p className="text-sm text-gray-300 mt-1">{user.name}</p>}
+          {mounted && sidebarAssignments.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {sidebarAssignments.map((assignment) => (
+                <div
+                  key={`${assignment.schoolName}-${assignment.role}`}
+                  className="rounded-md border border-gray-700 bg-gray-900/50 px-3 py-2"
+                >
+                  <p className="truncate text-sm font-medium text-white">{assignment.schoolName}</p>
+                  <p className="mt-1 inline-flex rounded-sm bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-100">
+                    {t(`${roleLabelNamespace}.${assignment.role}`)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <nav className="mt-4 flex-1 overflow-y-auto custom-scrollbar">
-          <a
+          <Link
             href="/dashboard"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard' ? 'bg-gray-700' : ''}`}
           >
             {t('dashboard')}
-          </a>
-          <a
+          </Link>
+          <Link
             href="/dashboard/students"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/students' ? 'bg-gray-700' : ''}`}
           >
             {t('students')}
-          </a>
-          <a
+          </Link>
+          <Link
             href="/dashboard/classes"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/classes' ? 'bg-gray-700' : ''}`}
           >
             {t('classes')}
-          </a>
-          <a
-            href="/dashboard/schools"
-            className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
-          >
-            {t('schools')}
-          </a>
-          {teacher?.isGlobalAdmin && (
-            <a
+          </Link>
+          {canManageTeachers(user) && (
+            <Link
+              href="/dashboard/teachers"
+              className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/teachers' ? 'bg-gray-700' : ''}`}
+            >
+              {t('teachers')}
+            </Link>
+          )}
+          {canManageSchools(user) && (
+            <Link
+              href="/dashboard/schools"
+              className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
+            >
+              {t('schools')}
+            </Link>
+          )}
+          {user?.isGlobalAdmin && (
+            <Link
               href="/dashboard/admin"
               className={`block px-4 py-2 hover:bg-gray-700 text-yellow-400 ${pathname.startsWith('/dashboard/admin') ? 'bg-gray-700' : ''}`}
             >
               Admin Panel
-            </a>
+            </Link>
           )}
         </nav>
         <div className="p-4 flex flex-col gap-4 border-t border-gray-700">

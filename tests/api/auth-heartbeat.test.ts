@@ -16,7 +16,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: { update: mockUpdateTeacher },
+    user: { update: mockUpdateTeacher },
     userSession: { updateMany: mockUpdateSessions },
   },
 }))
@@ -68,7 +68,7 @@ describe('API: /api/auth/heartbeat POST', () => {
       data: { lastActiveAt: expect.any(Date) },
     })
     expect(mockUpdateSessions).toHaveBeenCalledWith({
-      where: { token: 'valid-token', teacherId: 'teacher-1' },
+      where: { token: 'valid-token', userId: 'teacher-1' },
       data: { lastActiveAt: expect.any(Date) },
     })
   })

@@ -1,34 +1,27 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
+import { forbiddenResponse, isAuthFailure, requireAuth, USER_SCHOOL_ROLES } from '@/lib/permissions'
 
 export async function GET(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
+
+    if (auth.user.isGlobalAdmin) {
+      const schools = await prisma.school.findMany({
+        where: { deletedAt: null },
+        orderBy: { name: 'asc' },
+      })
+      return NextResponse.json({ schools })
     }
 
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: payload.id }
-    })
-
-    if (!teacher) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
-    }
-
-    const teacherSchools = await prisma.teacherSchool.findMany({
-      where: { teacherId: payload.id, school: { deletedAt: null } },
+    const userSchools = await prisma.userSchool.findMany({
+      where: { userId: auth.user.id, school: { deletedAt: null } },
       include: { school: true },
     })
 
-    const schools = teacherSchools.map((ts) => ts.school)
+    const schools = userSchools.map((ts) => ts.school)
     return NextResponse.json({ schools })
   } catch (error) {
     console.error('Schools error:', error)
@@ -38,23 +31,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    const teacher = await prisma.teacher.findUnique({
-      where: { id: payload.id }
-    })
-
-    if (!teacher) {
-      return NextResponse.json({ error: 'User not found' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
+    if (!auth.user.isGlobalAdmin) return forbiddenResponse()
 
     const body = await request.json()
     const { name, address } = body
@@ -67,12 +46,8 @@ export async function POST(request: Request) {
       data: { name, address },
     })
 
-    await prisma.teacherSchool.create({
-      data: { teacherId: payload.id, schoolId: school.id, role: 'admin' },
-    })
-
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    await logAction(payload.id, 'CREATE_SCHOOL', { schoolId: school.id, name }, ipAddress)
+    await logAction(auth.user.id, 'CREATE_SCHOOL', { schoolId: school.id, name, role: USER_SCHOOL_ROLES.COORDINATOR }, ipAddress)
 
     return NextResponse.json({ school })
   } catch (error) {

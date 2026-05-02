@@ -21,3 +21,29 @@ export async function login(page: Page, email: string, password = 'playwright123
   await page.waitForURL(/\/dashboard/, { timeout: 30000 });
   await expect(page).toHaveURL(/\/dashboard/);
 }
+
+export async function loginByApi(
+  page: Page,
+  email: string,
+  password = 'playwright123',
+  selectedSchoolId = ''
+) {
+  const response = await page.request.post('/api/auth', {
+    data: {
+      action: 'login',
+      email,
+      password,
+    },
+  })
+
+  expect(response.ok()).toBe(true)
+  const { token, teacher } = await response.json()
+
+  await page.addInitScript((authState) => {
+    localStorage.setItem('token', authState.token)
+    localStorage.setItem('teacher', JSON.stringify(authState.teacher))
+    if (authState.selectedSchoolId) {
+      localStorage.setItem('selectedSchool', authState.selectedSchoolId)
+    }
+  }, { token, teacher, selectedSchoolId })
+}

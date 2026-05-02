@@ -1,6 +1,6 @@
-# Aleno
+# Alfabetiza
 
-Aleno is a developer-maintained Next.js application for tracking schools, classes, students, reading levels, reading history, teacher sessions, and administrative audit data.
+Alfabetiza is a developer-maintained Next.js application for tracking schools, classes, students, reading levels, reading history, teacher sessions, and administrative audit data.
 
 The project uses Next.js 16, React 19, TypeScript, Prisma, PostgreSQL, next-intl, Vitest, and Playwright.
 

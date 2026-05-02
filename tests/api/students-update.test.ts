@@ -1,19 +1,20 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 
 // Use vi.hoisted to define mocks at the right time
-const { mockCreateHistory, mockFindStudent, mockFindTeacherSchool, mockVerifyToken } = vi.hoisted(() => ({
+const { mockCreateHistory, mockFindStudent, mockFindUser, mockFindUserSchool, mockVerifyToken } = vi.hoisted(() => ({
   mockCreateHistory: vi.fn(),
   mockFindStudent: vi.fn(),
-  mockFindTeacherSchool: vi.fn(),
+  mockFindUser: vi.fn(),
+  mockFindUserSchool: vi.fn(),
   mockVerifyToken: vi.fn(),
 }))
 
 vi.mock('@/lib/db', () => ({
   prisma: {
     studentReadingHistory: { create: mockCreateHistory },
-    teacher: { findUnique: vi.fn() },
+    user: { findUnique: mockFindUser },
     school: { findMany: vi.fn() },
-    teacherSchool: { findMany: vi.fn(), findUnique: mockFindTeacherSchool },
+    userSchool: { findMany: vi.fn(), findUnique: mockFindUserSchool },
     student: { findMany: vi.fn(), findUnique: mockFindStudent },
     readingLevel: { findMany: vi.fn() },
   },
@@ -35,7 +36,13 @@ describe('API: /api/students/update PATCH', () => {
       }
       return null
     })
-    mockFindTeacherSchool.mockResolvedValue({ teacherId: 'teacher-123', schoolId: 'school-1' })
+    mockFindUserSchool.mockResolvedValue({ userId: 'teacher-123', schoolId: 'school-1' })
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-123',
+      email: 'teacher@test.com',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'TEACHER' }],
+    })
     mockFindStudent.mockResolvedValue({
       id: 'student-123',
       schoolId: 'school-1',
@@ -133,7 +140,7 @@ describe('API: /api/students/update PATCH', () => {
       id: 'history-1', 
       studentId: 'student-123', 
       readingLevelId: 'level-123',
-      teacherId: 'teacher-123',
+      userId: 'teacher-123',
       notes: 'Good progress'
     })
 

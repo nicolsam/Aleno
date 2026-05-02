@@ -7,7 +7,7 @@ const { mockFindUnique, mockVerifyToken } = vi.hoisted(() => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: { findUnique: mockFindUnique },
+    user: { findUnique: mockFindUnique },
   },
 }))
 
@@ -44,7 +44,7 @@ describe('Admin Library: verifyAdmin', () => {
     expect(result.error?.status).toBe(401)
   })
 
-  it('should return 403 Forbidden if teacher is not found', async () => {
+  it('should return 401 if user is not found', async () => {
     mockVerifyToken.mockReturnValue({ id: 'teacher-1' })
     mockFindUnique.mockResolvedValue(null)
 
@@ -54,10 +54,10 @@ describe('Admin Library: verifyAdmin', () => {
     const result = await verifyAdmin(request)
     
     expect(result.error).toBeDefined()
-    expect(result.error?.status).toBe(403)
+    expect(result.error?.status).toBe(401)
   })
 
-  it('should return 403 Forbidden if teacher is not a global admin', async () => {
+  it('should return 403 Forbidden if user is not a global admin', async () => {
     mockVerifyToken.mockReturnValue({ id: 'teacher-1' })
     mockFindUnique.mockResolvedValue({ id: 'teacher-1', isGlobalAdmin: false })
 
@@ -70,12 +70,12 @@ describe('Admin Library: verifyAdmin', () => {
     expect(result.error?.status).toBe(403)
   })
 
-  it('should return payload and teacher if token is valid and teacher is admin', async () => {
+  it('should return payload and user if token is valid and user is admin', async () => {
     const mockPayload = { id: 'teacher-1', email: 'admin@test.com' }
-    const mockTeacher = { id: 'teacher-1', isGlobalAdmin: true }
+    const mockUser = { id: 'teacher-1', email: 'admin@test.com', name: 'Admin', isGlobalAdmin: true, schools: [] }
     
     mockVerifyToken.mockReturnValue(mockPayload)
-    mockFindUnique.mockResolvedValue(mockTeacher)
+    mockFindUnique.mockResolvedValue(mockUser)
 
     const request = new Request('http://localhost', {
       headers: { authorization: 'Bearer valid-token' }
@@ -84,6 +84,6 @@ describe('Admin Library: verifyAdmin', () => {
     
     expect(result.error).toBeUndefined()
     expect(result.payload).toEqual(mockPayload)
-    expect(result.teacher).toEqual(mockTeacher)
+    expect(result.user).toEqual(mockUser)
   })
 })

@@ -9,8 +9,6 @@ export default function LoginPage() {
   const t = useTranslations('auth')
   const tErrors = useTranslations('errors')
   const tCommon = useTranslations('common')
-  const [isRegister, setIsRegister] = useState(false)
-  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -25,7 +23,7 @@ export default function LoginPage() {
       const res = await fetch('/api/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: isRegister ? 'register' : 'login', name, email, password }),
+        body: JSON.stringify({ action: 'login', email, password }),
       })
 
       const data = await res.json()
@@ -36,7 +34,8 @@ export default function LoginPage() {
       }
 
       localStorage.setItem('token', data.token)
-      localStorage.setItem('teacher', JSON.stringify(data.teacher))
+      localStorage.setItem('user', JSON.stringify(data.user))
+      localStorage.removeItem('teacher')
       router.push('/dashboard')
     } catch {
       setError(tErrors('failedConnect'))
@@ -48,22 +47,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Aleno</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Alfabetiza</h1>
         <h2 className="text-lg text-center mb-6 text-gray-600">
-          {isRegister ? t('register') : t('login')}
+          {t('login')}
         </h2>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isRegister && (
-            <input
-              type="text"
-              placeholder={t('name')}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              required
-            />
-          )}
           <input
             type="email"
             placeholder={t('email')}
@@ -88,19 +77,9 @@ export default function LoginPage() {
             disabled={loading}
             className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium"
           >
-            {loading ? tCommon('loading') + '...' : isRegister ? t('createBtn') : t('loginBtn')}
+            {loading ? tCommon('loading') + '...' : t('loginBtn')}
           </button>
         </form>
-
-        <p className="mt-4 text-center text-sm text-gray-600">
-          {isRegister ? t('alreadyAccount') : t('noAccount')}{' '}
-          <button
-            onClick={() => { setIsRegister(!isRegister); setError('') }}
-            className="text-blue-600 hover:underline"
-          >
-            {isRegister ? t('loginBtn') : t('register')}
-          </button>
-        </p>
       </div>
     </div>
   )

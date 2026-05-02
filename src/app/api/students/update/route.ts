@@ -1,21 +1,14 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
 import { getEnrollmentForDate } from '@/lib/enrollments'
 import { parseDateInput } from '@/lib/monthly-updates'
+import { forbiddenResponse, hasSchoolAccess, isAuthFailure, requireAuth } from '@/lib/permissions'
 
 export async function PATCH(request: Request) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const payload = verifyToken(token)
-    if (!payload) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
 
     const body = await request.json()
     const { studentId, readingLevelId, notes, recordedAt } = body
@@ -51,13 +44,7 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ error: 'Student not found' }, { status: 404 })
     }
 
-    const teacherSchool = await prisma.teacherSchool.findUnique({
-      where: { teacherId_schoolId: { teacherId: payload.id, schoolId: student.schoolId } },
-    })
-
-    if (!teacherSchool) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-    }
+    if (!hasSchoolAccess(auth.user, student.schoolId)) return forbiddenResponse()
 
     const enrollment = getEnrollmentForDate(student.enrollments, assessmentDate)
     if (!enrollment) {
@@ -71,14 +58,14 @@ export async function PATCH(request: Request) {
         studentId,
         enrollmentId: enrollment.id,
         readingLevelId,
-        teacherId: payload.id,
+        userId: auth.user.id,
         recordedAt: assessmentDate,
         notes,
       },
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    await logAction(payload.id, 'UPDATE_STUDENT_LEVEL', { studentId, readingLevelId }, ipAddress)
+    await logAction(auth.user.id, 'UPDATE_STUDENT_LEVEL', { studentId, readingLevelId }, ipAddress)
 
     return NextResponse.json({ history })
   } catch (error) {

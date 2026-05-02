@@ -17,8 +17,10 @@ import {
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link'
 import { ArrowRight, Pencil, Trash2 } from "lucide-react"
-import { getReadingLevelStyle, isAttentionReadingLevel } from '@/lib/reading-levels'
+import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
+import { getStudentMetricCounts } from '@/lib/student-metrics'
+import { getSectionOptionsForGrade, resolveSectionFilter } from '@/lib/class-filters'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import {
@@ -40,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { canManageSchoolScopedRecords, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
 interface ClassRecord {
   id: string
@@ -98,6 +101,7 @@ export default function StudentsPage() {
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [schools, setSchools] = useState<School[]>([])
+  const [user, setUser] = useState<StoredUser | null>(null)
   const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [schoolId, setSchoolId] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -143,6 +147,19 @@ export default function StudentsPage() {
   const [gradeFilter, setGradeFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
   const [shiftFilter, setShiftFilter] = useState('')
+  const sectionOptions = getSectionOptionsForGrade(classes, gradeFilter)
+
+  const handleGradeFilterChange = (value: string) => {
+    const nextGrade = value === '__all__' ? '' : value
+    const nextSectionOptions = getSectionOptionsForGrade(classes, nextGrade)
+
+    setGradeFilter(nextGrade)
+    setSectionFilter((currentSection) => resolveSectionFilter(currentSection, nextSectionOptions))
+  }
+
+  const handleSectionFilterChange = (value: string) => {
+    setSectionFilter(value === '__all__' ? '' : value)
+  }
 
   const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', classId: '' })
   const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '', recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()) })
@@ -156,6 +173,7 @@ export default function StudentsPage() {
       router.push('/login')
       return
     }
+    queueMicrotask(() => setUser(getStoredUser()))
 
     const handleSchoolChange = () => {
       const storedSchool = localStorage.getItem('selectedSchool')
@@ -185,7 +203,11 @@ export default function StudentsPage() {
       const classesRes = await fetch(classesUrl, { headers: { Authorization: `Bearer ${token}` } })
       if (classesRes.ok) {
         const classesData = await classesRes.json()
-        setClasses(classesData.classes || [])
+        const fetchedClasses = classesData.classes || []
+        setClasses(fetchedClasses)
+        setSectionFilter((currentSection) => (
+          resolveSectionFilter(currentSection, getSectionOptionsForGrade(fetchedClasses, gradeFilter))
+        ))
         const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
         if (years.length > 0 && !years.includes(selectedAcademicYear)) {
@@ -354,6 +376,8 @@ export default function StudentsPage() {
   const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId })
   const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })
   const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId })
+  const studentMetrics = getStudentMetricCounts(students, selectedMonth)
+  const canManageStudents = canManageSchoolScopedRecords(user)
 
   if (loading) {
     return <StudentsSkeleton />
@@ -374,9 +398,11 @@ export default function StudentsPage() {
     <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{t('title')}</h1>
-        <Button onClick={() => setShowModal(true)}>
-          {t('add')}
-        </Button>
+        {canManageStudents && (
+          <Button onClick={() => setShowModal(true)}>
+            {t('add')}
+          </Button>
+        )}
       </div>
 
       <div className="mb-6 space-y-4 bg-white p-4 rounded-lg shadow">
@@ -399,8 +425,8 @@ export default function StudentsPage() {
           </div>
           <div className="space-y-1 md:w-56">
             <Label>{tClasses('grade')}</Label>
-            <Select value={gradeFilter} onValueChange={(value) => setGradeFilter(value === '__all__' ? '' : value)}>
-              <SelectTrigger className="w-full">
+            <Select value={gradeFilter || '__all__'} onValueChange={handleGradeFilterChange}>
+              <SelectTrigger className="w-full" data-testid="students-grade-filter">
                 <SelectValue placeholder={tClasses('all')} />
               </SelectTrigger>
               <SelectContent>
@@ -411,18 +437,24 @@ export default function StudentsPage() {
           </div>
           <div className="space-y-1 md:w-28">
             <Label>{tClasses('section')}</Label>
-            <Input
-              type="text"
-              value={sectionFilter}
-              onChange={e => setSectionFilter(e.target.value.toUpperCase())}
-              maxLength={2}
-              placeholder={tClasses('all')}
-            />
+            <Select value={sectionFilter || '__all__'} onValueChange={handleSectionFilterChange}>
+              <SelectTrigger className="w-full" data-testid="students-section-filter">
+                <SelectValue placeholder={tClasses('all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{tClasses('all')}</SelectItem>
+                {sectionOptions.map((section) => (
+                  <SelectItem key={section} value={section}>
+                    {section}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1 md:w-44">
             <Label>{tClasses('shift')}</Label>
             <Select value={shiftFilter} onValueChange={(value) => setShiftFilter(value === '__all__' ? '' : value)}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="w-full" data-testid="students-shift-filter">
                 <SelectValue placeholder={tClasses('all')} />
               </SelectTrigger>
               <SelectContent>
@@ -472,7 +504,7 @@ export default function StudentsPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Link href={needAttentionHref}>
+        <Link href={needAttentionHref} data-testid="students-need-attention-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -483,13 +515,13 @@ export default function StudentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-red-600">
-                {students.filter((s) => isAttentionReadingLevel(s.readingHistory?.[0]?.readingLevel.code)).length}
+              <p className="text-3xl font-bold text-red-600" data-testid="students-need-attention-count">
+                {studentMetrics.needAttentionCount}
               </p>
             </CardContent>
           </Card>
         </Link>
-        <Link href={missingUpdatesHref}>
+        <Link href={missingUpdatesHref} data-testid="students-missing-updates-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -500,13 +532,13 @@ export default function StudentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-amber-600">
-                {students.filter((s) => s.monthlyUpdateStatus === 'missing').length}
+              <p className="text-3xl font-bold text-amber-600" data-testid="students-missing-updates-count">
+                {studentMetrics.missingMonthlyUpdatesCount}
               </p>
             </CardContent>
           </Card>
         </Link>
-        <Link href={improvedHref}>
+        <Link href={improvedHref} data-testid="students-improved-card">
           <Card className="transition-shadow hover:shadow-md cursor-pointer h-full">
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between gap-3">
@@ -517,42 +549,22 @@ export default function StudentsPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-green-600">
-                {students.filter((s) => {
-                  const history = s.readingHistory || []
-                  const assessmentsInMonth = history.filter(entry => {
-                    const d = new Date(entry.recordedAt!)
-                    const start = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]) - 1, 1)
-                    const end = new Date(selectedAcademicYear, Number(selectedMonthPart.split('-')[0]), 0)
-                    return d >= start && d <= end
-                  })
-                  if (assessmentsInMonth.length === 0) return false
-
-                  return assessmentsInMonth.some(current => {
-                    const previous = history.find(entry => {
-                      const dCurr = new Date(current.recordedAt!)
-                      const dEntry = new Date(entry.recordedAt!)
-                      const tCurr = new Date(current.createdAt!).getTime()
-                      const tEntry = new Date(entry.createdAt!).getTime()
-                      return dEntry < dCurr || (dEntry.getTime() === dCurr.getTime() && tEntry < tCurr)
-                    })
-                    return previous && current.readingLevel.order > previous.readingLevel.order
-                  })
-                }).length}
+              <p className="text-3xl font-bold text-green-600" data-testid="students-improved-count">
+                {studentMetrics.improvedCount}
               </p>
             </CardContent>
           </Card>
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <table className="w-full min-w-[820px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left p-4 text-gray-700">{t('name')}</th>
               <th className="text-left p-4 text-gray-700">{t('studentNumber')}</th>
               <th className="text-left p-4 text-gray-700">{tClasses('class')}</th>
-              <th className="text-left p-4 text-gray-700">{t('currentLevel')}</th>
+              <th className="text-left p-4 text-gray-700 whitespace-nowrap">{t('currentLevel')}</th>
               <th className="text-left p-4 text-gray-700">{t('monthlyUpdate')}</th>
               <th className="text-left p-4 text-gray-700">{t('actions')}</th>
             </tr>
@@ -576,7 +588,7 @@ export default function StudentsPage() {
                   <td className="p-4 text-gray-800">{formatClassName(student.class)}</td>
                   <td className="p-4">
                     <span
-                      className="px-2 py-1 rounded text-sm"
+                      className="inline-flex items-center whitespace-nowrap rounded px-2 py-1 text-sm leading-none"
                       style={{
                         backgroundColor: getReadingLevelStyle(student.readingHistory?.[0]?.readingLevel.code).backgroundColor,
                         color: getReadingLevelStyle(student.readingHistory?.[0]?.readingLevel.code).textColor,
@@ -614,22 +626,24 @@ export default function StudentsPage() {
                         {t('updateLevel')}
                       </Button>
 
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setEditingStudent(student)}
-                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                          title={tCommon('edit')}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeletingStudentId(student.id)}
-                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                          title={tCommon('delete')}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      {canManageStudents && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditingStudent(student)}
+                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            title={tCommon('edit')}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeletingStudentId(student.id)}
+                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                            title={tCommon('delete')}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

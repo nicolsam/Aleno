@@ -3,15 +3,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const {
   mockVerifyToken,
   mockFindTeacher,
-  mockFindTeacherSchools,
-  mockCreateTeacherSchool,
+  mockFindUserSchools,
+  mockCreateUserSchool,
   mockCreateSchool,
   mockLogAction,
 } = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
   mockFindTeacher: vi.fn(),
-  mockFindTeacherSchools: vi.fn(),
-  mockCreateTeacherSchool: vi.fn(),
+  mockFindUserSchools: vi.fn(),
+  mockCreateUserSchool: vi.fn(),
   mockCreateSchool: vi.fn(),
   mockLogAction: vi.fn(),
 }))
@@ -26,10 +26,10 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: { findUnique: mockFindTeacher },
-    teacherSchool: {
-      findMany: mockFindTeacherSchools,
-      create: mockCreateTeacherSchool,
+    user: { findUnique: mockFindTeacher },
+    userSchool: {
+      findMany: mockFindUserSchools,
+      create: mockCreateUserSchool,
     },
     school: { create: mockCreateSchool },
   },
@@ -63,15 +63,15 @@ describe('API: /api/schools', () => {
       { id: 'school-1', name: 'School 1' },
       { id: 'school-2', name: 'School 2' },
     ]
-    mockFindTeacherSchools.mockResolvedValue(schools.map((school) => ({ school })))
+    mockFindUserSchools.mockResolvedValue(schools.map((school) => ({ school })))
 
     const response = await GET(createRequest())
     const data = await response.json()
 
     expect(response.status).toBe(200)
     expect(data.schools).toEqual(schools)
-    expect(mockFindTeacherSchools).toHaveBeenCalledWith({
-      where: { teacherId: 'teacher-1', school: { deletedAt: null } },
+    expect(mockFindUserSchools).toHaveBeenCalledWith({
+      where: { userId: 'teacher-1', school: { deletedAt: null } },
       include: { school: true },
     })
   })
@@ -84,9 +84,9 @@ describe('API: /api/schools', () => {
     expect(data.error).toBe('Unauthorized')
   })
 
-  it('POST creates a school and links it to the teacher', async () => {
+  it('POST creates a school for global admins', async () => {
+    mockFindTeacher.mockResolvedValue({ id: 'teacher-1', isGlobalAdmin: true, schools: [] })
     mockCreateSchool.mockResolvedValue({ id: 'school-1', name: 'New School', address: 'Main St' })
-    mockCreateTeacherSchool.mockResolvedValue({})
 
     const response = await POST(createRequest({ name: 'New School', address: 'Main St' }))
     const data = await response.json()
@@ -96,18 +96,16 @@ describe('API: /api/schools', () => {
     expect(mockCreateSchool).toHaveBeenCalledWith({
       data: { name: 'New School', address: 'Main St' },
     })
-    expect(mockCreateTeacherSchool).toHaveBeenCalledWith({
-      data: { teacherId: 'teacher-1', schoolId: 'school-1', role: 'admin' },
-    })
     expect(mockLogAction).toHaveBeenCalledWith(
       'teacher-1',
       'CREATE_SCHOOL',
-      { schoolId: 'school-1', name: 'New School' },
+      { schoolId: 'school-1', name: 'New School', role: 'COORDINATOR' },
       '127.0.0.1'
     )
   })
 
   it('POST rejects missing school names', async () => {
+    mockFindTeacher.mockResolvedValue({ id: 'teacher-1', isGlobalAdmin: true, schools: [] })
     const response = await POST(createRequest({ address: 'Main St' }))
     const data = await response.json()
 

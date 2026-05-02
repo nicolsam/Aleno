@@ -10,14 +10,16 @@ export async function GET(request: Request) {
     const logs = await prisma.auditLog.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        teacher: {
+        user: {
           select: { name: true, email: true }
         }
       },
       take: 200
     })
 
-    return NextResponse.json({ logs })
+    return NextResponse.json({
+      logs: logs.map((log) => ({ ...log, teacher: log.user })),
+    })
   } catch (error) {
     console.error('Admin logs error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })

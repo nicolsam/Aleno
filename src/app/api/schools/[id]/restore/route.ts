@@ -1,21 +1,15 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
+import { forbiddenResponse, isAuthFailure, requireAuth } from '@/lib/permissions'
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const token = request.headers.get('authorization')?.replace('Bearer ', '')
-    if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    const payload = verifyToken(token)
-    if (!payload) return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
+    if (!auth.user.isGlobalAdmin) return forbiddenResponse()
 
     const { id } = await params
-
-    const teacherSchool = await prisma.teacherSchool.findUnique({
-      where: { teacherId_schoolId: { teacherId: payload.id, schoolId: id } }
-    })
-    if (!teacherSchool) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
     const school = await prisma.school.update({
       where: { id },
@@ -23,7 +17,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    await logAction(payload.id, 'RESTORE_SCHOOL', { schoolId: id }, ipAddress)
+    await logAction(auth.user.id, 'RESTORE_SCHOOL', { schoolId: id }, ipAddress)
 
     return NextResponse.json({ school })
   } catch (error) {

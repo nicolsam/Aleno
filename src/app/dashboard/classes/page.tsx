@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { canManageSchoolScopedRecords, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
 interface School {
   id: string
@@ -57,6 +58,7 @@ export default function ClassesPage() {
   const [schoolId, setSchoolId] = useState('')
   const [academicYearFilter, setAcademicYearFilter] = useState(String(DEFAULT_ACADEMIC_YEAR))
   const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<StoredUser | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [newClass, setNewClass] = useState({ grade: '', section: '', shift: '', schoolId: '', academicYear: DEFAULT_ACADEMIC_YEAR })
   
@@ -76,6 +78,7 @@ export default function ClassesPage() {
       router.push('/login')
       return
     }
+    queueMicrotask(() => setUser(getStoredUser()))
 
     const handleSchoolChange = () => {
       const storedSchool = localStorage.getItem('selectedSchool')
@@ -213,16 +216,20 @@ export default function ClassesPage() {
     return <ClassesSkeleton />
   }
 
+  const canManageClasses = canManageSchoolScopedRecords(user)
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{t('title')}</h1>
-        <button
-          onClick={() => setShowModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          {t('add')}
-        </button>
+        {canManageClasses && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            {t('add')}
+          </button>
+        )}
       </div>
 
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
@@ -283,13 +290,13 @@ export default function ClassesPage() {
               <th className="text-left p-4 text-gray-700">{t('section')}</th>
               <th className="text-left p-4 text-gray-700">{t('shift')}</th>
               <th className="text-left p-4 text-gray-700">{t('school')}</th>
-              <th className="text-left p-4 text-gray-700">{tCommon('actions')}</th>
+              {canManageClasses && <th className="text-left p-4 text-gray-700">{tCommon('actions')}</th>}
             </tr>
           </thead>
           <tbody>
             {classes.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-4 text-center text-gray-700">
+                <td colSpan={canManageClasses ? 6 : 5} className="p-4 text-center text-gray-700">
                   {t('noClasses')}
                 </td>
               </tr>
@@ -301,24 +308,26 @@ export default function ClassesPage() {
                   <td className="p-4 text-gray-800">{c.section}</td>
                   <td className="p-4 text-gray-800">{t(`shifts.${c.shift}`)}</td>
                   <td className="p-4 text-gray-800">{c.school?.name}</td>
-                  <td className="p-4">
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => setEditingClass(c)}
-                        className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                        title={tCommon('edit')}
-                      >
-                        <Pencil size={16} />
-                      </button>
-                      <button
-                        onClick={() => setDeletingClassId(c.id)}
-                        className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                        title={tCommon('delete')}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </td>
+                  {canManageClasses && (
+                    <td className="p-4">
+                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => setEditingClass(c)}
+                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                          title={tCommon('edit')}
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => setDeletingClassId(c.id)}
+                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                          title={tCommon('delete')}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))
             )}

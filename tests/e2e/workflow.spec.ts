@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Aleno E2E Workflow', () => {
+test.describe('Alfabetiza E2E Workflow', () => {
   test.beforeEach(async ({ context }) => {
     // Force Portuguese locale
     await context.addCookies([{
@@ -57,14 +57,16 @@ test.describe('Aleno E2E Workflow', () => {
     await expect(page.locator('text=John Doe')).toBeVisible();
 
     // 5. Verify Filters
-    await page.locator('main select').nth(1).selectOption('1º Ano');
+    await page.getByTestId('students-grade-filter').click();
+    await page.getByRole('option', { name: '1º Ano', exact: true }).click();
     await expect(page.locator('text=John Doe')).toBeVisible();
 
-    await page.fill('input[placeholder="Todos"], input[placeholder="All"]', 'B');
-    await expect(page.locator('text=John Doe')).not.toBeVisible();
+    await page.getByTestId('students-section-filter').click();
+    await page.getByRole('option', { name: 'A', exact: true }).click();
+    await expect(page.locator('text=John Doe')).toBeVisible();
 
-    await page.fill('input[placeholder="Todos"], input[placeholder="All"]', '');
-    await page.locator('main select').nth(2).selectOption('Morning');
+    await page.getByTestId('students-shift-filter').click();
+    await page.getByRole('option', { name: /Manhã|Morning/ }).click();
     await expect(page.locator('text=John Doe')).toBeVisible();
   });
 });

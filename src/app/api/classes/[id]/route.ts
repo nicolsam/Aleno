@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
-import { verifyToken } from '@/lib/auth'
 import { logAction } from '@/lib/audit'
 import { VALID_GRADES, VALID_SHIFTS } from '../route'
 import { parseAcademicYear } from '@/lib/enrollments'
+import { forbiddenResponse, isAuthFailure, isCoordinatorForSchool, requireAuth } from '@/lib/permissions'
 
 function hasErrorCode(error: unknown, code: string): boolean {
   return typeof error === 'object' && error !== null && 'code' in error
@@ -12,27 +12,22 @@ function hasErrorCode(error: unknown, code: string): boolean {
 }
 
 async function checkAccess(request: Request, classId: string) {
-  const token = request.headers.get('authorization')?.replace('Bearer ', '')
-  if (!token) return { error: 'Unauthorized', status: 401 }
-  const payload = verifyToken(token)
-  if (!payload) return { error: 'Invalid token', status: 401 }
+  const auth = await requireAuth(request)
+  if (isAuthFailure(auth)) return { response: auth.error }
 
   const classRecord = await prisma.class.findUnique({ where: { id: classId } })
-  if (!classRecord) return { error: 'Not found', status: 404 }
+  if (!classRecord) return { response: NextResponse.json({ error: 'Not found' }, { status: 404 }) }
 
-  const ts = await prisma.teacherSchool.findUnique({
-    where: { teacherId_schoolId: { teacherId: payload.id, schoolId: classRecord.schoolId } }
-  })
-  if (!ts) return { error: 'Forbidden', status: 403 }
+  if (!isCoordinatorForSchool(auth.user, classRecord.schoolId)) return { response: forbiddenResponse() }
   
-  return { payload, classRecord }
+  return { auth, classRecord }
 }
 
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
     const access = await checkAccess(request, id)
-    if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+    if (access.response) return access.response
 
     const { grade, section, shift, academicYear: rawAcademicYear } = await request.json()
     const academicYear = parseAcademicYear(rawAcademicYear)
@@ -48,7 +43,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    await logAction(access.payload!.id, 'UPDATE_CLASS', { classId: id }, ipAddress)
+    await logAction(access.auth!.user.id, 'UPDATE_CLASS', { classId: id }, ipAddress)
 
     return NextResponse.json({ class: updatedClass })
   } catch (error) {
@@ -62,7 +57,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const { id } = await params
     const access = await checkAccess(request, id)
-    if (access.error) return NextResponse.json({ error: access.error }, { status: access.status })
+    if (access.response) return access.response
 
     await prisma.class.update({
       where: { id },
@@ -70,7 +65,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     })
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
-    await logAction(access.payload!.id, 'SOFT_DELETE_CLASS', { classId: id }, ipAddress)
+    await logAction(access.auth!.user.id, 'SOFT_DELETE_CLASS', { classId: id }, ipAddress)
 
     return NextResponse.json({ success: true })
   } catch (error) {

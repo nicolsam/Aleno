@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { Prisma } from '@prisma/client'
 
 const { mockCreateLog } = vi.hoisted(() => ({
   mockCreateLog: vi.fn(),
@@ -26,7 +27,7 @@ describe('Audit Library: logAction', () => {
     expect(mockCreateLog).toHaveBeenCalledTimes(1)
     expect(mockCreateLog).toHaveBeenCalledWith({
       data: {
-        teacherId: 'teacher-1',
+        userId: 'teacher-1',
         action: 'LOGIN',
         details: { test: true },
         ipAddress: '127.0.0.1',
@@ -42,9 +43,9 @@ describe('Audit Library: logAction', () => {
     expect(mockCreateLog).toHaveBeenCalledTimes(1)
     expect(mockCreateLog).toHaveBeenCalledWith({
       data: {
-        teacherId: 'teacher-2',
+        userId: 'teacher-2',
         action: 'LOGOUT',
-        details: null,
+        details: Prisma.JsonNull,
         ipAddress: undefined,
       }
     })

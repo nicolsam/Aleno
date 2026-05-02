@@ -2,17 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   mockFindTeacher,
-  mockCreateTeacher,
   mockCreateSession,
-  mockHashPassword,
   mockVerifyPassword,
   mockGenerateToken,
   mockLogAction,
 } = vi.hoisted(() => ({
   mockFindTeacher: vi.fn(),
-  mockCreateTeacher: vi.fn(),
   mockCreateSession: vi.fn(),
-  mockHashPassword: vi.fn(),
   mockVerifyPassword: vi.fn(),
   mockGenerateToken: vi.fn(),
   mockLogAction: vi.fn(),
@@ -20,9 +16,8 @@ const {
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: {
+    user: {
       findUnique: mockFindTeacher,
-      create: mockCreateTeacher,
     },
     userSession: {
       create: mockCreateSession,
@@ -31,7 +26,6 @@ vi.mock('@/lib/db', () => ({
 }))
 
 vi.mock('@/lib/auth', () => ({
-  hashPassword: mockHashPassword,
   verifyPassword: mockVerifyPassword,
   generateToken: mockGenerateToken,
 }))
@@ -58,22 +52,13 @@ describe('API: /api/auth POST', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
-    mockHashPassword.mockResolvedValue('hashed-password')
     mockVerifyPassword.mockResolvedValue(true)
     mockGenerateToken.mockReturnValue('jwt-token')
     mockCreateSession.mockResolvedValue({})
     mockLogAction.mockResolvedValue(undefined)
   })
 
-  it('registers a new teacher and creates a session', async () => {
-    mockFindTeacher.mockResolvedValue(null)
-    mockCreateTeacher.mockResolvedValue({
-      id: 'teacher-1',
-      name: 'Teacher',
-      email: 'teacher@test.com',
-      isGlobalAdmin: false,
-    })
-
+  it('rejects public registration because accounts are invite-only', async () => {
     const response = await POST(createRequest({
       action: 'register',
       name: 'Teacher',
@@ -82,28 +67,12 @@ describe('API: /api/auth POST', () => {
     }))
     const data = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(data.token).toBe('jwt-token')
-    expect(data.teacher).toEqual({
-      id: 'teacher-1',
-      name: 'Teacher',
-      email: 'teacher@test.com',
-      isGlobalAdmin: false,
-    })
-    expect(mockHashPassword).toHaveBeenCalledWith('secret')
-    expect(mockCreateSession).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({
-        teacherId: 'teacher-1',
-        token: 'jwt-token',
-        ipAddress: '127.0.0.1',
-        userAgent: 'vitest',
-        expiresAt: expect.any(Date),
-      }),
-    }))
-    expect(mockLogAction).toHaveBeenCalledWith('teacher-1', 'REGISTER', { email: 'teacher@test.com' }, '127.0.0.1')
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Registration is invite-only')
+    expect(mockCreateSession).not.toHaveBeenCalled()
   })
 
-  it('rejects duplicate registration email', async () => {
+  it('does not check duplicate emails through public registration', async () => {
     mockFindTeacher.mockResolvedValue({ id: 'existing-teacher' })
 
     const response = await POST(createRequest({
@@ -114,9 +83,9 @@ describe('API: /api/auth POST', () => {
     }))
     const data = await response.json()
 
-    expect(response.status).toBe(400)
-    expect(data.error).toBe('Email already exists')
-    expect(mockCreateTeacher).not.toHaveBeenCalled()
+    expect(response.status).toBe(403)
+    expect(data.error).toBe('Registration is invite-only')
+    expect(mockFindTeacher).not.toHaveBeenCalled()
   })
 
   it('logs in a teacher with valid credentials', async () => {
@@ -125,7 +94,9 @@ describe('API: /api/auth POST', () => {
       name: 'Teacher',
       email: 'teacher@test.com',
       password: 'hashed-password',
-      isGlobalAdmin: true,
+      gender: 'FEMALE',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'TEACHER', school: { name: 'School 1' } }],
     })
 
     const response = await POST(createRequest({
@@ -137,7 +108,9 @@ describe('API: /api/auth POST', () => {
 
     expect(response.status).toBe(200)
     expect(data.token).toBe('jwt-token')
-    expect(data.teacher.isGlobalAdmin).toBe(true)
+    expect(data.teacher.isGlobalAdmin).toBe(false)
+    expect(data.user.gender).toBe('FEMALE')
+    expect(data.user.schools).toEqual([{ schoolId: 'school-1', schoolName: 'School 1', role: 'TEACHER' }])
     expect(mockVerifyPassword).toHaveBeenCalledWith('secret', 'hashed-password')
     expect(mockLogAction).toHaveBeenCalledWith('teacher-1', 'LOGIN', { email: 'teacher@test.com' }, '127.0.0.1')
   })
