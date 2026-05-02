@@ -1,15 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowRight } from 'lucide-react'
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
-import { getReadingLevelStyle } from '@/lib/reading-levels'
+import ChartSkeleton from '@/components/dashboard/ChartSkeleton'
 import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
 import { ACADEMIC_YEARS } from '@/lib/academic-years'
+import { cachedJson } from '@/lib/client-get-cache'
 import {
   buildMonthKey,
   getAvailableMonthOptions,
@@ -28,6 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+const DashboardCharts = dynamic(() => import('@/components/dashboard/DashboardCharts'), {
+  loading: () => <ChartSkeleton />,
+})
 
 interface Stats {
   totalStudents: number
@@ -114,24 +119,32 @@ export default function DashboardPage() {
       if (!token) return
 
       setLoading(true)
-      const schoolsRes = await fetch('/api/schools', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const schoolsData = await schoolsRes.json()
-      if (schoolsRes.ok && schoolsData.schools) {
-        setSchools(schoolsData.schools)
-      }
-
       const classParams = new URLSearchParams()
       if (schoolId) classParams.set('schoolId', schoolId)
       const classUrl = `/api/classes${classParams.toString() ? `?${classParams.toString()}` : ''}`
-      const classesRes = await fetch(classUrl, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+
+      const dashboardParams = new URLSearchParams({ month: selectedMonth })
+      if (schoolId) dashboardParams.set('schoolId', schoolId)
+      const dashboardUrl = `/api/dashboard?${dashboardParams.toString()}`
+
+      const [schoolsRes, classesRes, dashboardRes] = await Promise.all([
+        cachedJson<{ schools?: { id: string; name: string }[] }>('/api/schools', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        cachedJson<{ academicYears?: number[] }>(classUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        cachedJson<Stats>(dashboardUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+
+      if (schoolsRes.ok && schoolsRes.data.schools) {
+        setSchools(schoolsRes.data.schools)
+      }
 
       if (classesRes.ok) {
-        const classesData = await classesRes.json()
-        const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
+        const years = classesRes.data.academicYears?.length ? classesRes.data.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
 
         if (years.length > 0 && !years.includes(selectedAcademicYear)) {
@@ -147,15 +160,8 @@ export default function DashboardPage() {
         }
       }
 
-      const params = new URLSearchParams({ month: selectedMonth })
-      if (schoolId) params.set('schoolId', schoolId)
-      const url = `/api/dashboard?${params.toString()}`
-      const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const data = await res.json()
-      if (res.ok) {
-        setStats(data)
+      if (dashboardRes.ok) {
+        setStats(dashboardRes.data)
       }
       setLoading(false)
     }
@@ -170,6 +176,10 @@ export default function DashboardPage() {
   const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId, from: 'dashboard' })
   const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId, from: 'dashboard' })
   const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId, from: 'dashboard' })
+  const chartDistribution = stats?.distribution.map((item) => ({
+    ...item,
+    translatedName: t(`levels.${item.level}`),
+  })) || []
 
   return (
     <div>
@@ -338,41 +348,13 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('dashboard.distribution')}</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={stats.distribution.map(d => ({ ...d, translatedName: t(`levels.${d.level}`) }))}
-                dataKey="count"
-                nameKey="translatedName"
-                cx="50%"
-                cy="50%"
-                outerRadius={100}
-              >
-                {stats.distribution.map((_, index) => (
-                  <Cell key={`cell-${index}`} fill={getReadingLevelStyle(stats.distribution[index]?.level).color} />
-                ))}
-              </Pie>
-              <Tooltip />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">{t('dashboard.byLevel')}</h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={stats.distribution.map(d => ({ ...d, translatedName: t(`levels.${d.level}`) }))} layout="vertical">
-              <XAxis type="number" />
-              <YAxis type="category" dataKey="translatedName" width={120} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="count" fill="#3B82F6" name={t('nav.students')} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      <div className="mb-6">
+        <DashboardCharts
+          distribution={chartDistribution}
+          distributionTitle={t('dashboard.distribution')}
+          byLevelTitle={t('dashboard.byLevel')}
+          studentLabel={t('nav.students')}
+        />
       </div>
 
         </>

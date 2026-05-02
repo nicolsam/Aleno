@@ -1,14 +1,19 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { ArrowLeft, TrendingUp, User, BookOpen } from 'lucide-react'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
 import StudentProfileSkeleton from '@/components/skeletons/StudentProfileSkeleton'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
+
+const StudentProgressChart = dynamic(() => import('@/components/dashboard/StudentProgressChart'), {
+  loading: () => <div className="h-[280px] animate-pulse rounded bg-gray-50" />,
+})
 
 interface ClassRecord {
   id: string
@@ -77,19 +82,19 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
     const fetchData = async () => {
       const [historyRes, levelsRes] = await Promise.all([
-        fetch(`/api/students/${studentId}/history`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/levels'),
+        cachedJson<{ student: StudentDetail; history: HistoryEntry[] }>(`/api/students/${studentId}/history`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        cachedJson<ReadingLevel[]>('/api/levels'),
       ])
 
       if (historyRes.ok) {
-        const data = await historyRes.json()
-        setStudent(data.student)
-        setHistory(data.history)
+        setStudent(historyRes.data.student)
+        setHistory(historyRes.data.history)
       }
 
       if (levelsRes.ok) {
-        const levelsData = await levelsRes.json()
-        setLevels(levelsData)
+        setLevels(levelsRes.data)
       }
 
       setLoading(false)
@@ -109,14 +114,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     })
 
     if (res.ok) {
+      clearClientGetCache(`/api/students/${studentId}/history`)
       // Re-fetch data to show the new entry
-      const historyRes = await fetch(`/api/students/${studentId}/history`, {
+      const historyRes = await cachedJson<{ student: StudentDetail; history: HistoryEntry[] }>(`/api/students/${studentId}/history`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
+      }, { force: true })
       if (historyRes.ok) {
-        const data = await historyRes.json()
-        setStudent(data.student)
-        setHistory(data.history)
+        setStudent(historyRes.data.student)
+        setHistory(historyRes.data.history)
       }
       setShowUpdateModal(false)
       setUpdateLevel({
@@ -241,44 +246,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             <TrendingUp size={20} className="text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-800">{t('progressChart')}</h2>
           </div>
-          <ResponsiveContainer width="100%" height={280}>
-            <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#6B7280' }} />
-              <YAxis
-                domain={[1, 7]}
-                ticks={[1, 2, 3, 4, 5, 6, 7]}
-                tickFormatter={(value: number) => levelLabels[value] || ''}
-                tick={{ fontSize: 11, fill: '#6B7280' }}
-                width={130}
-              />
-              <Tooltip
-                content={({ active, payload }) => {
-                  if (active && payload && payload.length) {
-                    const data = payload[0].payload
-                    return (
-                      <div className="bg-white shadow-lg rounded-lg p-3 border">
-                        <p className="font-semibold text-gray-800">{data.levelName}</p>
-                        <p className="text-sm text-gray-500">{data.date}</p>
-                        {data.notes && (
-                          <p className="text-sm text-gray-600 mt-1 italic">&ldquo;{data.notes}&rdquo;</p>
-                        )}
-                      </div>
-                    )
-                  }
-                  return null
-                }}
-              />
-              <Line
-                type="monotone"
-                dataKey="level"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                dot={{ fill: '#3B82F6', r: 5 }}
-                activeDot={{ r: 7, fill: '#2563EB' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
+          <StudentProgressChart data={chartData} levelLabels={levelLabels} />
         </div>
       )}
 
