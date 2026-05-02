@@ -17,6 +17,12 @@ type SidebarAssignment = {
   role: string
 }
 
+function getRoleLabelNamespace(gender: string | null | undefined): string {
+  if (gender === 'FEMALE') return 'rolesFemale'
+  if (gender === 'MALE') return 'rolesMale'
+  return 'roles'
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
@@ -98,6 +104,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     router.push('/login')
   }
 
+  const roleLabelNamespace = getRoleLabelNamespace(user?.gender)
   const sidebarAssignments: SidebarAssignment[] = user?.isGlobalAdmin ? [] : (user?.schools || [])
     .map((assignment) => ({
       schoolName: assignment.schoolName || schools.find((school) => school.id === assignment.schoolId)?.name || '',
@@ -121,7 +128,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 >
                   <p className="truncate text-sm font-medium text-white">{assignment.schoolName}</p>
                   <p className="mt-1 inline-flex rounded-sm bg-gray-700 px-2 py-0.5 text-xs font-medium text-gray-100">
-                    {t(`roles.${assignment.role}`)}
+                    {t(`${roleLabelNamespace}.${assignment.role}`)}
                   </p>
                 </div>
               ))}

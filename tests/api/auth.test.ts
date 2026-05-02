@@ -94,6 +94,7 @@ describe('API: /api/auth POST', () => {
       name: 'Teacher',
       email: 'teacher@test.com',
       password: 'hashed-password',
+      gender: 'FEMALE',
       isGlobalAdmin: false,
       schools: [{ schoolId: 'school-1', role: 'TEACHER', school: { name: 'School 1' } }],
     })
@@ -108,6 +109,7 @@ describe('API: /api/auth POST', () => {
     expect(response.status).toBe(200)
     expect(data.token).toBe('jwt-token')
     expect(data.teacher.isGlobalAdmin).toBe(false)
+    expect(data.user.gender).toBe('FEMALE')
     expect(data.user.schools).toEqual([{ schoolId: 'school-1', schoolName: 'School 1', role: 'TEACHER' }])
     expect(mockVerifyPassword).toHaveBeenCalledWith('secret', 'hashed-password')
     expect(mockLogAction).toHaveBeenCalledWith('teacher-1', 'LOGIN', { email: 'teacher@test.com' }, '127.0.0.1')

@@ -2,6 +2,7 @@ export type StoredUser = {
   id: string
   name: string
   email: string
+  gender?: string | null
   isGlobalAdmin?: boolean
   schools?: { schoolId: string; schoolName?: string; role: string }[]
 }

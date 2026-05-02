@@ -24,6 +24,14 @@
     "roles": {
       "TEACHER": "Teacher",
       "COORDINATOR": "Academic Coordinator"
+    },
+    "rolesMale": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
+    },
+    "rolesFemale": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
     }
   },
   "students": {
@@ -183,6 +191,12 @@
     "title": "Accept Invite",
     "loading": "Loading invite...",
     "invalid": "This invite is invalid or expired.",
+    "gender": "Gender",
+    "selectGender": "Select gender",
+    "genders": {
+      "FEMALE": "Female",
+      "MALE": "Male"
+    },
     "password": "Create password",
     "accept": "Create account",
     "acceptError": "Failed to accept invite"

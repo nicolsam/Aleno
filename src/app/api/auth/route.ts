@@ -50,6 +50,7 @@ export async function POST(request: Request) {
         id: user.id,
         name: user.name,
         email: user.email,
+        gender: user.gender,
         isGlobalAdmin: user.isGlobalAdmin,
         schools: (user.schools || []).map((school) => ({
           schoolId: school.schoolId,

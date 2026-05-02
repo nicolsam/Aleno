@@ -24,6 +24,14 @@
     "roles": {
       "TEACHER": "Professor",
       "COORDINATOR": "Coordenador Acadêmico"
+    },
+    "rolesMale": {
+      "TEACHER": "Professor",
+      "COORDINATOR": "Coordenador Acadêmico"
+    },
+    "rolesFemale": {
+      "TEACHER": "Professora",
+      "COORDINATOR": "Coordenadora Acadêmica"
     }
   },
   "students": {
@@ -183,6 +191,12 @@
     "title": "Aceitar convite",
     "loading": "Carregando convite...",
     "invalid": "Este convite é inválido ou expirou.",
+    "gender": "Gênero",
+    "selectGender": "Selecionar gênero",
+    "genders": {
+      "FEMALE": "Feminino",
+      "MALE": "Masculino"
+    },
     "password": "Criar senha",
     "accept": "Criar conta",
     "acceptError": "Falha ao aceitar convite"

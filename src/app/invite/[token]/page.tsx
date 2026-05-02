@@ -7,6 +7,13 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 type InviteDetails = {
   name: string
@@ -21,6 +28,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const { token } = use(params)
   const [invite, setInvite] = useState<InviteDetails | null>(null)
   const [password, setPassword] = useState('')
+  const [gender, setGender] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
 
@@ -47,7 +55,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     const response = await fetch(`/api/invites/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ password, gender }),
     })
     const data = await response.json()
 
@@ -76,6 +84,19 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
                 <p className="font-medium">{invite.name}</p>
                 <p>{invite.email}</p>
                 <p>{invite.schoolName}</p>
+              </div>
+
+              <div className="space-y-1">
+                <Label>{t('gender')}</Label>
+                <Select value={gender} onValueChange={setGender} required>
+                  <SelectTrigger className="!w-full">
+                    <SelectValue placeholder={t('selectGender')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="FEMALE">{t('genders.FEMALE')}</SelectItem>
+                    <SelectItem value="MALE">{t('genders.MALE')}</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1">

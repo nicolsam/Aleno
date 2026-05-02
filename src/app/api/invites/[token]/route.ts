@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { hashInviteToken, isInviteExpired } from '@/lib/invites'
 import { USER_SCHOOL_ROLES } from '@/lib/permissions'
+import { normalizeGender } from '@/lib/user-profile'
 
 async function findInvite(token: string) {
   return prisma.userInvite.findUnique({
@@ -38,10 +39,15 @@ export async function GET(_request: Request, { params }: { params: Promise<{ tok
 export async function POST(request: Request, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params
-    const { password } = await request.json()
+    const { password, gender: rawGender } = await request.json()
+    const gender = normalizeGender(rawGender)
 
     if (!password || typeof password !== 'string' || password.length < 8) {
       return NextResponse.json({ error: 'Password must have at least 8 characters' }, { status: 400 })
+    }
+
+    if (!gender) {
+      return NextResponse.json({ error: 'Gender is required' }, { status: 400 })
     }
 
     const invite = await findInvite(token)
@@ -61,6 +67,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
           name: invite.name,
           email: invite.email,
           password: hashedPassword,
+          gender,
           schools: {
             create: {
               schoolId: invite.schoolId,
