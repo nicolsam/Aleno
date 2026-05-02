@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 
 type InviteDetails = {
   name: string
@@ -45,13 +46,12 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
   useEffect(() => {
     const fetchInvite = async () => {
-      const response = await fetch(`/api/invites/${token}`)
-      const data = await response.json()
+      const response = await cachedJson<{ invite: InviteDetails; error?: string }>(`/api/invites/${token}`)
 
       if (!response.ok) {
-        setError(t(getInviteErrorKey(data.error)))
+        setError(t(getInviteErrorKey(response.data.error || '')))
       } else {
-        setInvite(data.invite)
+        setInvite(response.data.invite)
       }
       setLoading(false)
     }
@@ -85,6 +85,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       return
     }
 
+    clearClientGetCache(`/api/invites/${token}`)
     router.push('/login')
   }
 

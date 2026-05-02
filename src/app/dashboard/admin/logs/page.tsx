@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
+import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import { cachedJson } from '@/lib/client-get-cache'
 
 interface AuditLog {
   id: string
@@ -25,12 +26,11 @@ export default function AdminLogsPage() {
     if (!token) return router.push('/login')
 
     const fetchLogs = async () => {
-      const res = await fetch('/api/admin/logs', {
+      const res = await cachedJson<{ logs: AuditLog[] }>('/api/admin/logs', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
-        const data = await res.json()
-        setLogs(data.logs)
+        setLogs(res.data.logs)
       } else {
         router.push('/dashboard')
       }
@@ -40,7 +40,7 @@ export default function AdminLogsPage() {
     fetchLogs()
   }, [router])
 
-  if (loading) return <StudentsSkeleton />
+  if (loading) return <AdminTableSkeleton />
 
   return (
     <div className="space-y-6">

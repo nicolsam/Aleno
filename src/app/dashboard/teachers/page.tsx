@@ -26,6 +26,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 import { canManageTeachers, getStoredUser, type StoredUser } from '@/lib/client-auth'
 import { filterBySearchQuery } from '@/lib/search'
 
@@ -73,6 +75,7 @@ export default function TeachersPage() {
   const [schools, setSchools] = useState<School[]>([])
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>([])
+  const [loading, setLoading] = useState(true)
   const [schoolId, setSchoolId] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [inviteLink, setInviteLink] = useState('')
@@ -132,26 +135,30 @@ export default function TeachersPage() {
       const token = localStorage.getItem('token')
       if (!token || !user) return
 
-      const schoolsRes = await fetch('/api/schools', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      setLoading(true)
+      const params = new URLSearchParams()
+      if (schoolId) params.set('schoolId', schoolId)
+
+      const [schoolsRes, usersRes] = await Promise.all([
+        cachedJson<{ schools?: School[] }>('/api/schools', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        cachedJson<{ users?: ManagedUser[]; invites?: PendingInvite[] }>(`/api/users${params.toString() ? `?${params.toString()}` : ''}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+
       if (schoolsRes.ok) {
-        const data = await schoolsRes.json()
-        const fetchedSchools = data.schools || []
+        const fetchedSchools = schoolsRes.data.schools || []
         setSchools(fetchedSchools)
         if (!schoolId && fetchedSchools.length === 1) setSchoolId(fetchedSchools[0].id)
       }
 
-      const params = new URLSearchParams()
-      if (schoolId) params.set('schoolId', schoolId)
-      const usersRes = await fetch(`/api/users${params.toString() ? `?${params.toString()}` : ''}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
       if (usersRes.ok) {
-        const data = await usersRes.json()
-        setUsers(data.users || [])
-        setInvites(data.invites || [])
+        setUsers(usersRes.data.users || [])
+        setInvites(usersRes.data.invites || [])
       }
+      setLoading(false)
     }
 
     fetchData()
@@ -206,6 +213,7 @@ export default function TeachersPage() {
     }
 
     if (data.user) {
+      clearClientGetCache('/api/users')
       setUsers((current) => (
         current.some((currentUser) => currentUser.id === data.user.id)
           ? current.map((currentUser) => currentUser.id === data.user.id ? data.user : currentUser)
@@ -217,6 +225,7 @@ export default function TeachersPage() {
       return
     }
 
+    clearClientGetCache('/api/users')
     setInviteLink(data.inviteLink)
     setCreatedInvite(data.invite)
     setInvites((current) => [data.invite, ...current])
@@ -242,6 +251,7 @@ export default function TeachersPage() {
       return
     }
 
+    clearClientGetCache('/api/users')
     setUsers((current) => current.filter((currentUser) => currentUser.id !== managedUser.id))
     toast.success(t('unassigned'))
   }
@@ -263,6 +273,7 @@ export default function TeachersPage() {
       return
     }
 
+    clearClientGetCache('/api/users')
     setUsers((current) => current.map((currentUser) => (
       currentUser.id === data.user.id ? data.user : currentUser
     )))
@@ -275,6 +286,8 @@ export default function TeachersPage() {
     await navigator.clipboard.writeText(link)
     toast.success(t('copied'))
   }
+
+  if (loading) return <AdminTableSkeleton />
 
   return (
     <div className="space-y-6">

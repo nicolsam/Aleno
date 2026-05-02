@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations } from 'next-intl'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import NavigationHint from '@/components/navigation/NavigationHint'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 import { canManageSchools, canManageTeachers, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
 interface School {
@@ -72,16 +74,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const res = await fetch('/api/schools', {
+      const res = await cachedJson<{ schools?: School[] }>('/api/schools', {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = await res.json()
-      if (res.ok && data.schools) {
-        setSchools(data.schools)
+      if (res.ok && res.data.schools) {
+        setSchools(res.data.schools)
         const stored = localStorage.getItem('selectedSchool')
-        if (stored && data.schools.find((s: School) => s.id === stored)) {
+        if (stored && res.data.schools.find((s: School) => s.id === stored)) {
           setSelectedSchool(stored)
-        } else if (data.schools.length > 0) {
+        } else if (res.data.schools.length > 0) {
           setSelectedSchool('') // Default to "All Schools" explicitly
         }
       }
@@ -101,6 +102,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     localStorage.removeItem('user')
     localStorage.removeItem('teacher')
     localStorage.removeItem('selectedSchool')
+    clearClientGetCache()
     router.push('/login')
   }
 
@@ -141,18 +143,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard' ? 'bg-gray-700' : ''}`}
           >
             {t('dashboard')}
+            <NavigationHint />
           </Link>
           <Link
             href="/dashboard/students"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/students' ? 'bg-gray-700' : ''}`}
           >
             {t('students')}
+            <NavigationHint />
           </Link>
           <Link
             href="/dashboard/classes"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/classes' ? 'bg-gray-700' : ''}`}
           >
             {t('classes')}
+            <NavigationHint />
           </Link>
           {canManageTeachers(user) && (
             <Link
@@ -160,6 +165,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/teachers' ? 'bg-gray-700' : ''}`}
             >
               {t('teachers')}
+              <NavigationHint />
             </Link>
           )}
           {canManageSchools(user) && (
@@ -168,6 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
             >
               {t('schools')}
+              <NavigationHint />
             </Link>
           )}
           {user?.isGlobalAdmin && (
@@ -176,6 +183,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               className={`block px-4 py-2 hover:bg-gray-700 text-yellow-400 ${pathname.startsWith('/dashboard/admin') ? 'bg-gray-700' : ''}`}
             >
               Admin Panel
+              <NavigationHint />
             </Link>
           )}
         </nav>

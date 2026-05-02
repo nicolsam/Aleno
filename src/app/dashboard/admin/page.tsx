@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
+import { cachedJson } from '@/lib/client-get-cache'
 
 interface AdminStats {
   totalSchools: number
@@ -25,12 +26,11 @@ export default function AdminDashboardPage() {
     }
 
     const fetchStats = async () => {
-      const res = await fetch('/api/admin/stats', {
+      const res = await cachedJson<{ stats: AdminStats }>('/api/admin/stats', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
-        const data = await res.json()
-        setStats(data.stats)
+        setStats(res.data.stats)
       } else if (res.status === 403) {
         router.push('/dashboard')
       }

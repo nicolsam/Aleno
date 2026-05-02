@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
@@ -24,6 +24,7 @@ import { getSectionOptionsForGrade, resolveSectionFilter } from '@/lib/class-fil
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import { filterBySearchQuery } from '@/lib/search'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 import {
   buildMonthKey,
   getAvailableMonthOptions,
@@ -187,30 +188,48 @@ export default function StudentsPage() {
     return () => window.removeEventListener('schoolChanged', handleSchoolChange)
   }, [router])
 
-  useEffect(() => {
-    const fetchData = async () => {
+  const fetchData = useCallback(async (force = false) => {
       const token = localStorage.getItem('token')
       if (!token) return
 
       setLoading(true)
-      const schoolsRes = await fetch('/api/schools', { headers: { Authorization: `Bearer ${token}` } })
-      if (schoolsRes.ok) {
-        const schoolsData = await schoolsRes.json()
-        setSchools(schoolsData.schools || [])
-      }
-
       const classParams = new URLSearchParams({ academicYear: String(selectedAcademicYear) })
       if (schoolId) classParams.set('schoolId', schoolId)
       const classesUrl = `/api/classes?${classParams.toString()}`
-      const classesRes = await fetch(classesUrl, { headers: { Authorization: `Bearer ${token}` } })
+
+      const params = new URLSearchParams()
+      if (schoolId) params.append('schoolId', schoolId)
+      if (gradeFilter) params.append('grade', gradeFilter)
+      if (sectionFilter) params.append('section', sectionFilter)
+      if (shiftFilter) params.append('shift', shiftFilter)
+      params.append('month', selectedMonth)
+      params.append('academicYear', String(selectedAcademicYear))
+      const studentsUrl = `/api/students${params.toString() ? `?${params.toString()}` : ''}`
+
+      const [schoolsRes, classesRes, studentsRes, levelsRes] = await Promise.all([
+        cachedJson<{ schools?: School[] }>('/api/schools', {
+          headers: { Authorization: `Bearer ${token}` },
+        }, { force }),
+        cachedJson<{ classes?: ClassRecord[]; academicYears?: number[] }>(classesUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        }, { force }),
+        cachedJson<{ students?: Student[] }>(studentsUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        }, { force }),
+        cachedJson<ReadingLevel[]>('/api/levels', undefined, { force }),
+      ])
+
+      if (schoolsRes.ok) {
+        setSchools(schoolsRes.data.schools || [])
+      }
+
       if (classesRes.ok) {
-        const classesData = await classesRes.json()
-        const fetchedClasses = classesData.classes || []
+        const fetchedClasses = classesRes.data.classes || []
         setClasses(fetchedClasses)
         setSectionFilter((currentSection) => (
           resolveSectionFilter(currentSection, getSectionOptionsForGrade(fetchedClasses, gradeFilter))
         ))
-        const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
+        const years = classesRes.data.academicYears?.length ? classesRes.data.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
         if (years.length > 0 && !years.includes(selectedAcademicYear)) {
           const yearMonths = getAvailableMonthOptions(years[0])
@@ -223,31 +242,21 @@ export default function StudentsPage() {
         }
       }
 
-      const params = new URLSearchParams()
-      if (schoolId) params.append('schoolId', schoolId)
-      if (gradeFilter) params.append('grade', gradeFilter)
-      if (sectionFilter) params.append('section', sectionFilter)
-      if (shiftFilter) params.append('shift', shiftFilter)
-      params.append('month', selectedMonth)
-      params.append('academicYear', String(selectedAcademicYear))
-
-      const studentsUrl = `/api/students${params.toString() ? `?${params.toString()}` : ''}`
-
-      const res = await fetch(studentsUrl, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.ok) {
-        const data = await res.json()
-        setStudents(data.students || [])
+      if (studentsRes.ok) {
+        setStudents(studentsRes.data.students || [])
       }
 
-      const levelsRes = await fetch('/api/levels')
       if (levelsRes.ok) {
-        const levelsData = await levelsRes.json()
-        setLevels(levelsData)
+        setLevels(levelsRes.data)
       }
       setLoading(false)
-    }
-    fetchData()
   }, [schoolId, gradeFilter, sectionFilter, shiftFilter, selectedMonth, selectedAcademicYear, selectedMonthPart])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void fetchData()
+    })
+  }, [fetchData])
 
   const handleCreateStudent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -265,6 +274,8 @@ export default function StudentsPage() {
 
     if (res.ok) {
       const data = await res.json()
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
       setStudents([
         ...students,
         {
@@ -300,6 +311,8 @@ export default function StudentsPage() {
 
     if (res.ok) {
       const data = await res.json()
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
       setStudents(students.map(s => s.id === data.student.id ? { ...data.student, readingHistory: s.readingHistory } : s))
       setEditingStudent(null)
       toast.success(tCommon('save'))
@@ -323,6 +336,8 @@ export default function StudentsPage() {
 
     if (res.ok) {
       const deletedStudent = students.find(s => s.id === studentIdToDelete)
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
       setStudents(students.filter(s => s.id !== studentIdToDelete))
 
       toast(tCommon('delete'), {
@@ -334,6 +349,8 @@ export default function StudentsPage() {
               headers: { Authorization: `Bearer ${token}` }
             })
             if (restoreRes.ok) {
+              clearClientGetCache('/api/students')
+              clearClientGetCache('/api/dashboard')
               if (deletedStudent) setStudents(prev => [...prev, deletedStudent])
             }
           }
@@ -362,7 +379,15 @@ export default function StudentsPage() {
     })
 
     if (res.ok) {
-      window.location.reload()
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
+      setUpdateLevel({
+        studentId: '',
+        readingLevelId: '',
+        notes: '',
+        recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+      })
+      await fetchData(true)
     } else {
       const data = await res.json()
       setError(data.error || tErrors('failedUpdate'))
@@ -405,9 +430,9 @@ export default function StudentsPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-700 mb-4">{t('needSchool')}</p>
-        <a href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
+        <Link href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
           {tCommon('createSchool')}
-        </a>
+        </Link>
       </div>
     )
   }
@@ -617,9 +642,9 @@ export default function StudentsPage() {
               filteredStudents.map((student) => (
                 <tr key={student.id} className="border-t hover:bg-gray-50 group">
                   <td className="p-4">
-                    <a href={`/dashboard/students/${student.id}`} className="text-blue-600 hover:underline font-medium">
+                    <Link href={`/dashboard/students/${student.id}`} className="text-blue-600 hover:underline font-medium">
                       {student.name}
-                    </a>
+                    </Link>
                   </td>
                   <td className="p-4 text-gray-800">{student.studentNumber}</td>
                   <td className="p-4 text-gray-800">{formatClassName(student.class)}</td>

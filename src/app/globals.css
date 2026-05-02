@@ -128,3 +128,36 @@
     @apply font-sans;
   }
 }
+
+.navigation-hint {
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-left: 0.5rem;
+  border-radius: 9999px;
+  background: currentColor;
+  opacity: 0;
+  visibility: hidden;
+  vertical-align: middle;
+}
+
+.navigation-hint.is-pending {
+  visibility: visible;
+  animation: navigationHintFade 180ms ease-out 120ms forwards, navigationHintPulse 900ms ease-in-out 120ms infinite;
+}
+
+@keyframes navigationHintFade {
+  to {
+    opacity: 0.75;
+  }
+}
+
+@keyframes navigationHintPulse {
+  0%,
+  100% {
+    transform: scale(0.8);
+  }
+  50% {
+    transform: scale(1);
+  }
+}

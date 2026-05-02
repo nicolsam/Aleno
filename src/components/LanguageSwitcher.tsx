@@ -1,21 +1,23 @@
 'use client'
 
 import { useLocale, useTranslations } from 'next-intl'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
 export default function LanguageSwitcher() {
+  const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('nav')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    queueMicrotask(() => setMounted(true))
   }, [])
 
   const switchLocale = (newLocale: string) => {
     if (locale === newLocale) return
     document.cookie = `NEXT_LOCALE=${newLocale}; path=/; max-age=31536000; SameSite=Lax`
-    window.location.reload()
+    router.refresh()
   }
 
   if (!mounted) {

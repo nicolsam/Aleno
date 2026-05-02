@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslations } from 'next-intl'
 import { ArrowLeft, Pencil, Trash2 } from 'lucide-react'
@@ -40,6 +40,7 @@ import {
   resolveMonthKey,
 } from '@/lib/monthly-updates'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 
 type ActionListKind = 'need-attention' | 'missing-updates' | 'improved'
 
@@ -170,27 +171,40 @@ export default function DashboardActionListPage({
       return
     }
     queueMicrotask(() => setUser(getStoredUser()))
+  }, [router])
 
-    const fetchData = async () => {
+  const fetchData = useCallback(async (force = false) => {
+      const token = localStorage.getItem('token')
+      if (!token) return
+
       setLoading(true)
-
-      const schoolsRes = await fetch('/api/schools', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      if (schoolsRes.ok) {
-        const schoolsData = await schoolsRes.json()
-        setSchools(schoolsData.schools || [])
-      }
 
       const classParams = new URLSearchParams()
       if (schoolId) classParams.set('schoolId', schoolId)
-      const classesRes = await fetch(`/api/classes${classParams.toString() ? `?${classParams.toString()}` : ''}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+
+      const dashboardParams = new URLSearchParams({ month: selectedMonth })
+      if (schoolId) dashboardParams.set('schoolId', schoolId)
+
+      const [schoolsRes, classesRes, levelsRes, dashboardRes] = await Promise.all([
+        cachedJson<{ schools?: School[] }>('/api/schools', {
+          headers: { Authorization: `Bearer ${token}` },
+        }, { force }),
+        cachedJson<{ classes?: ClassRecord[]; academicYears?: number[] }>(`/api/classes${classParams.toString() ? `?${classParams.toString()}` : ''}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }, { force }),
+        cachedJson<ReadingLevel[]>('/api/levels', undefined, { force }),
+        cachedJson<DashboardStats>(`/api/dashboard?${dashboardParams.toString()}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        }, { force }),
+      ])
+
+      if (schoolsRes.ok) {
+        setSchools(schoolsRes.data.schools || [])
+      }
+
       if (classesRes.ok) {
-        const classesData = await classesRes.json()
-        setClasses(classesData.classes || [])
-        const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
+        setClasses(classesRes.data.classes || [])
+        const years = classesRes.data.academicYears?.length ? classesRes.data.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
 
         if (years.length > 0 && !years.includes(selectedAcademicYear)) {
@@ -206,25 +220,22 @@ export default function DashboardActionListPage({
         }
       }
 
-      const levelsRes = await fetch('/api/levels')
       if (levelsRes.ok) {
-        setLevels(await levelsRes.json())
+        setLevels(levelsRes.data)
       }
 
-      const dashboardParams = new URLSearchParams({ month: selectedMonth })
-      if (schoolId) dashboardParams.set('schoolId', schoolId)
-      const dashboardRes = await fetch(`/api/dashboard?${dashboardParams.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
       if (dashboardRes.ok) {
-        setStats(await dashboardRes.json())
+        setStats(dashboardRes.data)
       }
 
       setLoading(false)
-    }
+  }, [schoolId, selectedMonth, selectedAcademicYear, selectedMonthPart])
 
-    fetchData()
-  }, [router, schoolId, selectedMonth, selectedAcademicYear, selectedMonthPart])
+  useEffect(() => {
+    queueMicrotask(() => {
+      void fetchData()
+    })
+  }, [fetchData])
 
   const handleUpdateStudent = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -243,7 +254,10 @@ export default function DashboardActionListPage({
     })
 
     if (res.ok) {
-      window.location.reload()
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
+      setEditingStudent(null)
+      await fetchData(true)
     } else {
       toast.error(t('errors.failedUpdate'))
     }
@@ -263,7 +277,9 @@ export default function DashboardActionListPage({
     })
 
     if (res.ok) {
-      window.location.reload()
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
+      await fetchData(true)
     } else {
       toast.error(t('errors.failedDelete'))
     }
@@ -286,7 +302,15 @@ export default function DashboardActionListPage({
     })
 
     if (res.ok) {
-      window.location.reload()
+      clearClientGetCache('/api/students')
+      clearClientGetCache('/api/dashboard')
+      setUpdateLevel({
+        studentId: '',
+        readingLevelId: '',
+        notes: '',
+        recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+      })
+      await fetchData(true)
     } else {
       const data = await res.json()
       setError(data.error || t('errors.failedUpdate'))

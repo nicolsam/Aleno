@@ -16,10 +16,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Pencil, Search, Trash2 } from "lucide-react"
+import Link from 'next/link'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { filterBySearchQuery } from '@/lib/search'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 import {
   Select,
   SelectContent,
@@ -98,25 +100,27 @@ export default function ClassesPage() {
       const token = localStorage.getItem('token')
       if (!token) return
 
-      const schoolsRes = await fetch('/api/schools', {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const schoolsData = await schoolsRes.json()
-      if (schoolsRes.ok && schoolsData.schools) {
-        setSchools(schoolsData.schools)
-      }
-
       const params = new URLSearchParams()
       if (schoolId) params.set('schoolId', schoolId)
       if (academicYearFilter) params.set('academicYear', academicYearFilter)
       const url = `/api/classes${params.toString() ? `?${params.toString()}` : ''}`
-      const classesRes = await fetch(url, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      const classesData = await classesRes.json()
-      if (classesRes.ok && classesData.classes) {
-        setClasses(classesData.classes)
-        const years = classesData.academicYears?.length ? classesData.academicYears : ACADEMIC_YEARS
+
+      const [schoolsRes, classesRes] = await Promise.all([
+        cachedJson<{ schools?: School[] }>('/api/schools', {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+        cachedJson<{ classes?: ClassRecord[]; academicYears?: number[] }>(url, {
+          headers: { Authorization: `Bearer ${token}` },
+        }),
+      ])
+
+      if (schoolsRes.ok && schoolsRes.data.schools) {
+        setSchools(schoolsRes.data.schools)
+      }
+
+      if (classesRes.ok && classesRes.data.classes) {
+        setClasses(classesRes.data.classes)
+        const years = classesRes.data.academicYears?.length ? classesRes.data.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
         if (years.length > 0 && !years.includes(Number(academicYearFilter))) {
           setAcademicYearFilter(String(years[0]))
@@ -140,6 +144,7 @@ export default function ClassesPage() {
 
     if (res.ok) {
       const data = await res.json()
+      clearClientGetCache('/api/classes')
       setClasses([...classes, data.class])
       setShowModal(false)
       setNewClass({ grade: '', section: '', shift: '', schoolId: '', academicYear: Number(academicYearFilter) || DEFAULT_ACADEMIC_YEAR })
@@ -169,6 +174,7 @@ export default function ClassesPage() {
 
     if (res.ok) {
       const data = await res.json()
+      clearClientGetCache('/api/classes')
       setClasses(classes.map(c => c.id === data.class.id ? data.class : c))
       setEditingClass(null)
       toast.success(tCommon('save'))
@@ -193,6 +199,7 @@ export default function ClassesPage() {
 
     if (res.ok) {
       const deletedClass = classes.find(c => c.id === classIdToDelete)
+      clearClientGetCache('/api/classes')
       setClasses(classes.filter(c => c.id !== classIdToDelete))
       
       toast(tCommon('delete'), {
@@ -204,6 +211,7 @@ export default function ClassesPage() {
               headers: { Authorization: `Bearer ${token}` }
             })
             if (restoreRes.ok) {
+              clearClientGetCache('/api/classes')
               if (deletedClass) setClasses(prev => [...prev, deletedClass])
             }
           }
@@ -297,9 +305,9 @@ export default function ClassesPage() {
       {schools.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-gray-700 mb-4">{t('needSchool')}</p>
-          <a href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
+          <Link href="/dashboard/schools" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-block">
             {tCommon('createSchool')}
-          </a>
+          </Link>
         </div>
       ) : (
         <>

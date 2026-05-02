@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
+import AdminTableSkeleton from '@/components/skeletons/AdminTableSkeleton'
+import { cachedJson } from '@/lib/client-get-cache'
 
 interface Session {
   id: string
@@ -25,12 +26,11 @@ export default function AdminSessionsPage() {
     if (!token) return router.push('/login')
 
     const fetchSessions = async () => {
-      const res = await fetch('/api/admin/sessions', {
+      const res = await cachedJson<{ sessions: Session[] }>('/api/admin/sessions', {
         headers: { Authorization: `Bearer ${token}` }
       })
       if (res.ok) {
-        const data = await res.json()
-        setSessions(data.sessions)
+        setSessions(res.data.sessions)
       } else {
         router.push('/dashboard')
       }
@@ -40,7 +40,7 @@ export default function AdminSessionsPage() {
     fetchSessions()
   }, [router])
 
-  if (loading) return <StudentsSkeleton />
+  if (loading) return <AdminTableSkeleton />
 
   return (
     <div className="space-y-6">

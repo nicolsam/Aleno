@@ -19,6 +19,7 @@ import { Pencil, Search, Trash2 } from "lucide-react"
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { filterBySearchQuery } from '@/lib/search'
+import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 
 interface School {
   id: string
@@ -48,12 +49,11 @@ export default function SchoolsPage() {
     }
 
     const fetchSchools = async () => {
-      const res = await fetch('/api/schools', {
+      const res = await cachedJson<{ schools?: School[] }>('/api/schools', {
         headers: { Authorization: `Bearer ${token}` },
       })
-      const data = await res.json()
-      if (res.ok && data.schools) {
-        setSchools(data.schools)
+      if (res.ok && res.data.schools) {
+        setSchools(res.data.schools)
       }
       setLoading(false)
     }
@@ -73,6 +73,7 @@ export default function SchoolsPage() {
 
     if (res.ok) {
       const data = await res.json()
+      clearClientGetCache('/api/schools')
       setSchools([...schools, data.school])
       setShowModal(false)
       setNewSchool({ name: '', address: '' })
@@ -93,6 +94,7 @@ export default function SchoolsPage() {
 
     if (res.ok) {
       const data = await res.json()
+      clearClientGetCache('/api/schools')
       setSchools(schools.map(s => s.id === data.school.id ? data.school : s))
       setEditingSchool(null)
     } else {
@@ -115,6 +117,7 @@ export default function SchoolsPage() {
 
     if (res.ok) {
       const deletedSchool = schools.find(s => s.id === schoolIdToDelete)
+      clearClientGetCache('/api/schools')
       setSchools(schools.filter(s => s.id !== schoolIdToDelete))
       
       toast(tCommon('delete'), {
@@ -126,6 +129,7 @@ export default function SchoolsPage() {
               headers: { Authorization: `Bearer ${token}` }
             })
             if (restoreRes.ok) {
+              clearClientGetCache('/api/schools')
               if (deletedSchool) setSchools(prev => [...prev, deletedSchool])
             }
           }
