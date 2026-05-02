@@ -20,7 +20,11 @@
     "schools": "Schools",
     "classes": "Classes",
     "logout": "Logout",
-    "language": "Language"
+    "language": "Language",
+    "roles": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
+    }
   },
   "students": {
     "title": "Students",
@@ -155,9 +159,14 @@
     "role": "Role",
     "createInvite": "Create Invite",
     "copyInvite": "Copy invite link",
+    "inviteLinkUnavailable": "This invite was created before persistent links were added. Create a new invite to share a link.",
     "inviteCreated": "Invite created",
     "inviteError": "Failed to create invite",
     "activeTeachers": "Active teachers",
+    "editTeacher": "Edit teacher",
+    "editTeacherDescription": "Update the teacher name and login email.",
+    "updated": "Teacher updated",
+    "updateError": "Failed to update teacher",
     "pendingInvites": "Pending invites",
     "noPendingInvites": "No pending invites.",
     "empty": "No teachers found.",

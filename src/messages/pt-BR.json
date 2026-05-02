@@ -20,7 +20,11 @@
     "schools": "Escolas",
     "classes": "Turmas",
     "logout": "Sair",
-    "language": "Idioma"
+    "language": "Idioma",
+    "roles": {
+      "TEACHER": "Professor",
+      "COORDINATOR": "Coordenador Acadêmico"
+    }
   },
   "students": {
     "title": "Alunos",
@@ -155,9 +159,14 @@
     "role": "Perfil",
     "createInvite": "Criar convite",
     "copyInvite": "Copiar link do convite",
+    "inviteLinkUnavailable": "Este convite foi criado antes dos links persistentes. Crie um novo convite para compartilhar um link.",
     "inviteCreated": "Convite criado",
     "inviteError": "Falha ao criar convite",
     "activeTeachers": "Professores ativos",
+    "editTeacher": "Editar professor",
+    "editTeacherDescription": "Atualize o nome e o e-mail de login do professor.",
+    "updated": "Professor atualizado",
+    "updateError": "Falha ao atualizar professor",
     "pendingInvites": "Convites pendentes",
     "noPendingInvites": "Nenhum convite pendente.",
     "empty": "Nenhum professor encontrado.",

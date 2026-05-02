@@ -40,6 +40,11 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const { name, email } = await request.json()
     if (!name || !email) return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
 
+    if (email !== access.target!.email) {
+      const existingUser = await prisma.user.findUnique({ where: { email } })
+      if (existingUser) return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
+    }
+
     const updatedUser = await prisma.user.update({
       where: { id },
       data: { name, email },
