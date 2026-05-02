@@ -22,6 +22,17 @@ type InviteDetails = {
   schoolName: string
 }
 
+function getInviteErrorKey(error: string): string {
+  const errorMap: Record<string, string> = {
+    'Invalid or expired invite': 'invalid',
+    'Password must have at least 8 characters': 'passwordMin',
+    'Gender is required': 'genderRequired',
+    'Email already exists': 'emailExists',
+  }
+
+  return errorMap[error] || 'acceptError'
+}
+
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const router = useRouter()
   const t = useTranslations('invite')
@@ -38,7 +49,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       const data = await response.json()
 
       if (!response.ok) {
-        setError(data.error || t('invalid'))
+        setError(t(getInviteErrorKey(data.error)))
       } else {
         setInvite(data.invite)
       }
@@ -52,6 +63,16 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     event.preventDefault()
     setError('')
 
+    if (!gender) {
+      setError(t('genderRequired'))
+      return
+    }
+
+    if (password.length < 8) {
+      setError(t('passwordMin'))
+      return
+    }
+
     const response = await fetch(`/api/invites/${token}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -60,7 +81,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     const data = await response.json()
 
     if (!response.ok) {
-      setError(data.error || t('acceptError'))
+      setError(t(getInviteErrorKey(data.error)))
       return
     }
 

@@ -197,7 +197,10 @@
       "FEMALE": "Feminino",
       "MALE": "Masculino"
     },
+    "genderRequired": "Selecione um gênero.",
     "password": "Criar senha",
+    "passwordMin": "A senha deve ter pelo menos 8 caracteres.",
+    "emailExists": "Este e-mail já possui uma conta.",
     "accept": "Criar conta",
     "acceptError": "Falha ao aceitar convite"
   },

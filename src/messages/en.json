@@ -197,7 +197,10 @@
       "FEMALE": "Female",
       "MALE": "Male"
     },
+    "genderRequired": "Please select a gender.",
     "password": "Create password",
+    "passwordMin": "Password must have at least 8 characters.",
+    "emailExists": "This email already has an account.",
     "accept": "Create account",
     "acceptError": "Failed to accept invite"
   },
