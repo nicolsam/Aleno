@@ -7,10 +7,10 @@ import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
 
 interface AuditLog {
   id: string
-  teacherId: string
+  userId: string
   teacher: { name: string; email: string }
   action: string
-  details: any
+  details: unknown
   ipAddress: string | null
   createdAt: string
 }

@@ -16,6 +16,7 @@
   "nav": {
     "dashboard": "Painel",
     "students": "Alunos",
+    "teachers": "Professores",
     "schools": "Escolas",
     "classes": "Turmas",
     "logout": "Sair",
@@ -123,7 +124,7 @@
     "noData": "Nenhum aluno ainda. Adicione alunos para ver estatísticas."
   },
   "auth": {
-    "login": "Login do Professor",
+    "login": "Login",
     "register": "Criar Conta",
     "email": "E-mail",
     "password": "Senha",
@@ -134,6 +135,48 @@
     "createBtn": "Criar Conta",
     "loginError": "Credenciais inválidas",
     "registerSuccess": "Conta criada com sucesso"
+  },
+  "teachers": {
+    "title": "Professores",
+    "description": "Convide e gerencie professores da sua escola.",
+    "inviteTeacher": "Convidar professor",
+    "inviteDescription": "Crie um link de convite para o professor definir a própria senha.",
+    "openInviteModal": "Convidar professor",
+    "inviteModalTitle": "Dados do professor",
+    "inviteModalDescription": "Escolha a escola, informe os dados do professor e crie o convite.",
+    "inviteLinkTitle": "Link de convite pronto",
+    "inviteLinkDescription": "Compartilhe este link com a pessoa convidada. Ele só pode ser usado uma vez e expira em 7 dias.",
+    "inviteAnother": "Convidar outro",
+    "close": "Fechar",
+    "school": "Escola",
+    "selectSchool": "Selecionar escola",
+    "name": "Nome",
+    "email": "E-mail",
+    "role": "Perfil",
+    "createInvite": "Criar convite",
+    "copyInvite": "Copiar link do convite",
+    "inviteCreated": "Convite criado",
+    "inviteError": "Falha ao criar convite",
+    "activeTeachers": "Professores ativos",
+    "pendingInvites": "Convites pendentes",
+    "noPendingInvites": "Nenhum convite pendente.",
+    "empty": "Nenhum professor encontrado.",
+    "unassign": "Remover da escola",
+    "unassigned": "Professor removido",
+    "unassignError": "Falha ao remover professor",
+    "copied": "Link do convite copiado",
+    "roles": {
+      "TEACHER": "Professor",
+      "COORDINATOR": "Coordenador Acadêmico"
+    }
+  },
+  "invite": {
+    "title": "Aceitar convite",
+    "loading": "Carregando convite...",
+    "invalid": "Este convite é inválido ou expirou.",
+    "password": "Criar senha",
+    "accept": "Criar conta",
+    "acceptError": "Falha ao aceitar convite"
   },
   "levels": {
     "DNI": "Não Identifica",

@@ -17,7 +17,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -29,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { canManageSchoolScopedRecords, getStoredUser, type StoredUser } from '@/lib/client-auth'
 import { ACADEMIC_YEARS } from '@/lib/academic-years'
 import {
   buildMonthKey,
@@ -39,7 +39,7 @@ import {
   getYearFromMonthKey,
   resolveMonthKey,
 } from '@/lib/monthly-updates'
-import { getReadingLevelStyle, isAttentionReadingLevel } from '@/lib/reading-levels'
+import { getReadingLevelStyle } from '@/lib/reading-levels'
 
 type ActionListKind = 'need-attention' | 'missing-updates' | 'improved'
 
@@ -110,6 +110,7 @@ export default function DashboardActionListPage({
   const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [user, setUser] = useState<StoredUser | null>(null)
 
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [classes, setClasses] = useState<ClassRecord[]>([])
@@ -121,6 +122,7 @@ export default function DashboardActionListPage({
     notes: '',
     recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
   })
+  const canManageStudents = canManageSchoolScopedRecords(user)
 
   const selectedMonthPart = getMonthPartFromMonthKey(selectedMonth)
   const selectedAcademicYear = Number(selectedYear)
@@ -167,6 +169,7 @@ export default function DashboardActionListPage({
       router.push('/login')
       return
     }
+    queueMicrotask(() => setUser(getStoredUser()))
 
     const fetchData = async () => {
       setLoading(true)
@@ -434,22 +437,24 @@ export default function DashboardActionListPage({
                             {t('students.updateLevel')}
                           </Button>
 
-                          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => setEditingStudent(student)}
-                              className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                              title={t('common.edit')}
-                            >
-                              <Pencil size={16} />
-                            </button>
-                            <button
-                              onClick={() => setDeletingStudentId(student.id)}
-                              className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                              title={t('common.delete')}
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
+                          {canManageStudents && (
+                            <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                onClick={() => setEditingStudent(student)}
+                                className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                                title={t('common.edit')}
+                              >
+                                <Pencil size={16} />
+                              </button>
+                              <button
+                                onClick={() => setDeletingStudentId(student.id)}
+                                className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                                title={t('common.delete')}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>

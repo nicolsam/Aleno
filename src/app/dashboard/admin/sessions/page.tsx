@@ -7,7 +7,7 @@ import StudentsSkeleton from '@/components/skeletons/StudentsSkeleton'
 
 interface Session {
   id: string
-  teacherId: string
+  userId: string
   teacher: { name: string; email: string }
   ipAddress: string | null
   userAgent: string | null

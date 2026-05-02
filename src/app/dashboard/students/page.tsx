@@ -42,6 +42,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { canManageSchoolScopedRecords, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
 interface ClassRecord {
   id: string
@@ -100,6 +101,7 @@ export default function StudentsPage() {
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [classes, setClasses] = useState<ClassRecord[]>([])
   const [schools, setSchools] = useState<School[]>([])
+  const [user, setUser] = useState<StoredUser | null>(null)
   const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [schoolId, setSchoolId] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(() => {
@@ -171,6 +173,7 @@ export default function StudentsPage() {
       router.push('/login')
       return
     }
+    queueMicrotask(() => setUser(getStoredUser()))
 
     const handleSchoolChange = () => {
       const storedSchool = localStorage.getItem('selectedSchool')
@@ -374,6 +377,7 @@ export default function StudentsPage() {
   const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })
   const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId })
   const studentMetrics = getStudentMetricCounts(students, selectedMonth)
+  const canManageStudents = canManageSchoolScopedRecords(user)
 
   if (loading) {
     return <StudentsSkeleton />
@@ -394,9 +398,11 @@ export default function StudentsPage() {
     <div className="w-full">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">{t('title')}</h1>
-        <Button onClick={() => setShowModal(true)}>
-          {t('add')}
-        </Button>
+        {canManageStudents && (
+          <Button onClick={() => setShowModal(true)}>
+            {t('add')}
+          </Button>
+        )}
       </div>
 
       <div className="mb-6 space-y-4 bg-white p-4 rounded-lg shadow">
@@ -551,14 +557,14 @@ export default function StudentsPage() {
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
+      <div className="bg-white rounded-lg shadow overflow-x-auto">
+        <table className="w-full min-w-[820px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left p-4 text-gray-700">{t('name')}</th>
               <th className="text-left p-4 text-gray-700">{t('studentNumber')}</th>
               <th className="text-left p-4 text-gray-700">{tClasses('class')}</th>
-              <th className="text-left p-4 text-gray-700">{t('currentLevel')}</th>
+              <th className="text-left p-4 text-gray-700 whitespace-nowrap">{t('currentLevel')}</th>
               <th className="text-left p-4 text-gray-700">{t('monthlyUpdate')}</th>
               <th className="text-left p-4 text-gray-700">{t('actions')}</th>
             </tr>
@@ -582,7 +588,7 @@ export default function StudentsPage() {
                   <td className="p-4 text-gray-800">{formatClassName(student.class)}</td>
                   <td className="p-4">
                     <span
-                      className="px-2 py-1 rounded text-sm"
+                      className="inline-flex items-center whitespace-nowrap rounded px-2 py-1 text-sm leading-none"
                       style={{
                         backgroundColor: getReadingLevelStyle(student.readingHistory?.[0]?.readingLevel.code).backgroundColor,
                         color: getReadingLevelStyle(student.readingHistory?.[0]?.readingLevel.code).textColor,
@@ -620,22 +626,24 @@ export default function StudentsPage() {
                         {t('updateLevel')}
                       </Button>
 
-                      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => setEditingStudent(student)}
-                          className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
-                          title={tCommon('edit')}
-                        >
-                          <Pencil size={16} />
-                        </button>
-                        <button
-                          onClick={() => setDeletingStudentId(student.id)}
-                          className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
-                          title={tCommon('delete')}
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                      {canManageStudents && (
+                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditingStudent(student)}
+                            className="p-1.5 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded"
+                            title={tCommon('edit')}
+                          >
+                            <Pencil size={16} />
+                          </button>
+                          <button
+                            onClick={() => setDeletingStudentId(student.id)}
+                            className="p-1.5 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded"
+                            title={tCommon('delete')}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </td>
                 </tr>

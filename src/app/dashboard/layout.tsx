@@ -2,39 +2,35 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { useTranslations, useLocale } from 'next-intl'
+import Link from 'next/link'
+import { useTranslations } from 'next-intl'
 import LanguageSwitcher from '@/components/LanguageSwitcher'
+import { canManageSchools, canManageTeachers, getStoredUser, type StoredUser } from '@/lib/client-auth'
 
-interface School {
-  id: string
-  name: string
-  address?: string
-}
+interface School { id: string }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const t = useTranslations('nav')
-  const locale = useLocale()
-  const [schools, setSchools] = useState<School[]>([])
   const [selectedSchool, setSelectedSchool] = useState<string>('')
-  const [teacher, setTeacher] = useState<{ name: string; email: string; isGlobalAdmin?: boolean } | null>(null)
+  const [user, setUser] = useState<StoredUser | null>(null)
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
-    setMounted(true)
+    queueMicrotask(() => setMounted(true))
   }, [])
 
   useEffect(() => {
     if (!mounted) return
 
-    const storedTeacher = localStorage.getItem('teacher')
     const token = localStorage.getItem('token')
-    if (!storedTeacher || !token) {
+    const storedUser = getStoredUser()
+    if (!storedUser || !token) {
       router.push('/login')
       return
     }
-    setTeacher(JSON.parse(storedTeacher))
+    queueMicrotask(() => setUser(storedUser))
 
     // Heartbeat mechanism to keep session active
     const sendHeartbeat = async () => {
@@ -66,7 +62,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       })
       const data = await res.json()
       if (res.ok && data.schools) {
-        setSchools(data.schools)
         const stored = localStorage.getItem('selectedSchool')
         if (stored && data.schools.find((s: School) => s.id === stored)) {
           setSelectedSchool(stored)
@@ -87,6 +82,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     localStorage.removeItem('teacher')
     localStorage.removeItem('selectedSchool')
     router.push('/login')
@@ -99,40 +95,50 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <aside className="w-64 bg-gray-800 text-white h-screen sticky top-0 flex flex-col flex-shrink-0">
         <div className="p-4">
           <h1 className="text-xl font-bold">Aleno</h1>
-          {teacher && mounted && <p className="text-sm text-gray-300 mt-1">{teacher.name}</p>}
+          {user && mounted && <p className="text-sm text-gray-300 mt-1">{user.name}</p>}
         </div>
         <nav className="mt-4 flex-1 overflow-y-auto custom-scrollbar">
-          <a
+          <Link
             href="/dashboard"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard' ? 'bg-gray-700' : ''}`}
           >
             {t('dashboard')}
-          </a>
-          <a
+          </Link>
+          <Link
             href="/dashboard/students"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/students' ? 'bg-gray-700' : ''}`}
           >
             {t('students')}
-          </a>
-          <a
+          </Link>
+          <Link
             href="/dashboard/classes"
             className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/classes' ? 'bg-gray-700' : ''}`}
           >
             {t('classes')}
-          </a>
-          <a
-            href="/dashboard/schools"
-            className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
-          >
-            {t('schools')}
-          </a>
-          {teacher?.isGlobalAdmin && (
-            <a
+          </Link>
+          {canManageTeachers(user) && (
+            <Link
+              href="/dashboard/teachers"
+              className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/teachers' ? 'bg-gray-700' : ''}`}
+            >
+              {t('teachers')}
+            </Link>
+          )}
+          {canManageSchools(user) && (
+            <Link
+              href="/dashboard/schools"
+              className={`block px-4 py-2 hover:bg-gray-700 ${pathname === '/dashboard/schools' ? 'bg-gray-700' : ''}`}
+            >
+              {t('schools')}
+            </Link>
+          )}
+          {user?.isGlobalAdmin && (
+            <Link
               href="/dashboard/admin"
               className={`block px-4 py-2 hover:bg-gray-700 text-yellow-400 ${pathname.startsWith('/dashboard/admin') ? 'bg-gray-700' : ''}`}
             >
               Admin Panel
-            </a>
+            </Link>
           )}
         </nav>
         <div className="p-4 flex flex-col gap-4 border-t border-gray-700">

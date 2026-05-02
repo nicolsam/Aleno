@@ -16,6 +16,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "students": "Students",
+    "teachers": "Teachers",
     "schools": "Schools",
     "classes": "Classes",
     "logout": "Logout",
@@ -123,7 +124,7 @@
     "noData": "No students yet. Add students to see statistics."
   },
   "auth": {
-    "login": "Teacher Login",
+    "login": "Login",
     "register": "Create Account",
     "email": "Email",
     "password": "Password",
@@ -134,6 +135,48 @@
     "createBtn": "Create Account",
     "loginError": "Invalid credentials",
     "registerSuccess": "Account created successfully"
+  },
+  "teachers": {
+    "title": "Teachers",
+    "description": "Invite and manage teachers for your school.",
+    "inviteTeacher": "Invite teacher",
+    "inviteDescription": "Create an invite link so the teacher can set their own password.",
+    "openInviteModal": "Invite teacher",
+    "inviteModalTitle": "Teacher details",
+    "inviteModalDescription": "Choose the school, enter the teacher information, and create the invite.",
+    "inviteLinkTitle": "Invitation link ready",
+    "inviteLinkDescription": "Share this link with the invited user. It can be used once and expires in 7 days.",
+    "inviteAnother": "Invite another",
+    "close": "Close",
+    "school": "School",
+    "selectSchool": "Select a school",
+    "name": "Name",
+    "email": "Email",
+    "role": "Role",
+    "createInvite": "Create Invite",
+    "copyInvite": "Copy invite link",
+    "inviteCreated": "Invite created",
+    "inviteError": "Failed to create invite",
+    "activeTeachers": "Active teachers",
+    "pendingInvites": "Pending invites",
+    "noPendingInvites": "No pending invites.",
+    "empty": "No teachers found.",
+    "unassign": "Unassign from school",
+    "unassigned": "Teacher unassigned",
+    "unassignError": "Failed to unassign teacher",
+    "copied": "Invite link copied",
+    "roles": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
+    }
+  },
+  "invite": {
+    "title": "Accept Invite",
+    "loading": "Loading invite...",
+    "invalid": "This invite is invalid or expired.",
+    "password": "Create password",
+    "accept": "Create account",
+    "acceptError": "Failed to accept invite"
   },
   "levels": {
     "DNI": "Does Not Identify",
