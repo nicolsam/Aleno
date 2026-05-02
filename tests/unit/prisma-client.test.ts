@@ -10,10 +10,11 @@ describe('generated Prisma client', () => {
     expect(Prisma.ModelName).toEqual({
       School: 'School',
       Class: 'Class',
-      Teacher: 'Teacher',
+      User: 'User',
       UserSession: 'UserSession',
       AuditLog: 'AuditLog',
-      TeacherSchool: 'TeacherSchool',
+      UserSchool: 'UserSchool',
+      UserInvite: 'UserInvite',
       Student: 'Student',
       StudentEnrollment: 'StudentEnrollment',
       ReadingLevel: 'ReadingLevel',

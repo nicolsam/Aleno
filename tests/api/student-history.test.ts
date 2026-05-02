@@ -5,8 +5,9 @@ import { verifyToken } from '@/lib/auth'
 
 vi.mock('@/lib/db', () => ({
   prisma: {
+    user: { findUnique: vi.fn() },
     student: { findUnique: vi.fn() },
-    teacherSchool: { findUnique: vi.fn() },
+    userSchool: { findUnique: vi.fn() },
     studentReadingHistory: { findMany: vi.fn() },
   }
 }))
@@ -19,6 +20,15 @@ describe('GET /api/students/[id]/history', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
+
+  const mockUserAccess = (schools = [{ schoolId: 'school-1', role: 'TEACHER' }]) => {
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'teacher-1',
+      email: 'test@test.com',
+      isGlobalAdmin: false,
+      schools,
+    } as never)
+  }
 
   const mockRequest = () => ({
     headers: new Headers({ authorization: 'Bearer valid-token' }),
@@ -34,13 +44,14 @@ describe('GET /api/students/[id]/history', () => {
   })
 
   it('should return 401 with invalid token', async () => {
-    vi.mocked(verifyToken).mockReturnValue(null as any)
+    vi.mocked(verifyToken).mockReturnValue(null)
     const res = await GET(mockRequest(), { params: Promise.resolve({ id: 'student-1' }) })
     expect(res.status).toBe(401)
   })
 
   it('should return 404 if student not found', async () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@test.com' })
+    mockUserAccess()
     vi.mocked(prisma.student.findUnique).mockResolvedValue(null)
 
     const res = await GET(mockRequest(), { params: Promise.resolve({ id: 'nonexistent' }) })
@@ -49,10 +60,11 @@ describe('GET /api/students/[id]/history', () => {
 
   it('should return 403 if teacher has no access to student school', async () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@test.com' })
+    mockUserAccess([])
     vi.mocked(prisma.student.findUnique).mockResolvedValue({
       id: 'student-1', schoolId: 'school-1', class: {}, school: { id: 'school-1', name: 'Test' }
-    } as any)
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue(null)
+    } as never)
+    vi.mocked(prisma.userSchool.findUnique).mockResolvedValue(null)
 
     const res = await GET(mockRequest(), { params: Promise.resolve({ id: 'student-1' }) })
     expect(res.status).toBe(403)
@@ -60,24 +72,25 @@ describe('GET /api/students/[id]/history', () => {
 
   it('should return student with full history', async () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@test.com' })
+    mockUserAccess()
     vi.mocked(prisma.student.findUnique).mockResolvedValue({
       id: 'student-1', name: 'John', studentNumber: '001', schoolId: 'school-1',
       class: { grade: '1º Ano', section: 'A', shift: 'Morning' },
       school: { id: 'school-1', name: 'Test School' }
-    } as any)
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as any)
+    } as never)
+    vi.mocked(prisma.userSchool.findUnique).mockResolvedValue({} as never)
     vi.mocked(prisma.studentReadingHistory.findMany).mockResolvedValue([
       {
         id: 'h1', recordedAt: new Date(), notes: 'Good progress',
         readingLevel: { code: 'RW', name: 'Reads Words', order: 4 },
-        teacher: { name: 'Teacher A' }
+        user: { name: 'Teacher A' }
       },
       {
         id: 'h2', recordedAt: new Date(), notes: null,
         readingLevel: { code: 'LO', name: 'Letters Only', order: 2 },
-        teacher: { name: 'Teacher A' }
+        user: { name: 'Teacher A' }
       },
-    ] as any)
+    ] as never)
 
     const res = await GET(mockRequest(), { params: Promise.resolve({ id: 'student-1' }) })
     const data = await res.json()
@@ -92,12 +105,13 @@ describe('GET /api/students/[id]/history', () => {
 
   it('should return empty history for student with no assessments', async () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@test.com' })
+    mockUserAccess()
     vi.mocked(prisma.student.findUnique).mockResolvedValue({
       id: 'student-1', name: 'Jane', studentNumber: '002', schoolId: 'school-1',
       class: { grade: '2º Ano', section: 'B', shift: 'Afternoon' },
       school: { id: 'school-1', name: 'Test School' }
-    } as any)
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as any)
+    } as never)
+    vi.mocked(prisma.userSchool.findUnique).mockResolvedValue({} as never)
     vi.mocked(prisma.studentReadingHistory.findMany).mockResolvedValue([])
 
     const res = await GET(mockRequest(), { params: Promise.resolve({ id: 'student-1' }) })

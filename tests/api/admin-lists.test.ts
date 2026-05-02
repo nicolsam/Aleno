@@ -33,17 +33,17 @@ describe('Admin list APIs', () => {
   })
 
   it('returns audit logs for admins', async () => {
-    const logs = [{ id: 'log-1', action: 'LOGIN', teacher: { name: 'Admin', email: 'admin@test.com' } }]
+    const logs = [{ id: 'log-1', action: 'LOGIN', user: { name: 'Admin', email: 'admin@test.com' } }]
     mockFindLogs.mockResolvedValue(logs)
 
     const response = await getAdminLogs(new Request('http://localhost/api/admin/logs'))
     const data = await response.json()
 
     expect(response.status).toBe(200)
-    expect(data.logs).toEqual(logs)
+    expect(data.logs).toEqual(logs.map((log) => ({ ...log, teacher: log.user })))
     expect(mockFindLogs).toHaveBeenCalledWith({
       orderBy: { createdAt: 'desc' },
-      include: { teacher: { select: { name: true, email: true } } },
+      include: { user: { select: { name: true, email: true } } },
       take: 200,
     })
   })
@@ -61,8 +61,8 @@ describe('Admin list APIs', () => {
     const now = new Date()
     const old = new Date(Date.now() - 10 * 60 * 1000)
     mockFindSessions.mockResolvedValue([
-      { id: 'session-1', lastActiveAt: now, teacher: { name: 'Admin', email: 'admin@test.com' } },
-      { id: 'session-2', lastActiveAt: old, teacher: { name: 'User', email: 'user@test.com' } },
+      { id: 'session-1', lastActiveAt: now, user: { name: 'Admin', email: 'admin@test.com' } },
+      { id: 'session-2', lastActiveAt: old, user: { name: 'User', email: 'user@test.com' } },
     ])
 
     const response = await getAdminSessions(new Request('http://localhost/api/admin/sessions'))
@@ -73,7 +73,7 @@ describe('Admin list APIs', () => {
     expect(data.sessions[1].isActive).toBe(false)
     expect(mockFindSessions).toHaveBeenCalledWith({
       orderBy: { lastActiveAt: 'desc' },
-      include: { teacher: { select: { name: true, email: true } } },
+      include: { user: { select: { name: true, email: true } } },
       take: 100,
     })
   })

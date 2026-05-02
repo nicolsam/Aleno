@@ -63,12 +63,12 @@ async function cleanupMetricFixtures() {
   await prisma.studentEnrollment.deleteMany({ where: { studentId: { in: STUDENT_IDS } } })
   await prisma.student.deleteMany({ where: { id: { in: STUDENT_IDS } } })
   await prisma.class.deleteMany({ where: { id: CLASS_ID } })
-  await prisma.teacherSchool.deleteMany({ where: { schoolId: SCHOOL_ID } })
+  await prisma.userSchool.deleteMany({ where: { schoolId: SCHOOL_ID } })
   await prisma.school.deleteMany({ where: { id: SCHOOL_ID } })
 }
 
 async function seedMetricFixtures() {
-  const teacher = await prisma.teacher.findUnique({ where: { email: TEACHER_EMAIL } })
+  const teacher = await prisma.user.findUnique({ where: { email: TEACHER_EMAIL } })
   if (!teacher) throw new Error(`Missing E2E teacher: ${TEACHER_EMAIL}`)
 
   const { academicYear, current, previous } = currentMonthDates()
@@ -100,9 +100,10 @@ async function seedMetricFixtures() {
     data: {
       id: SCHOOL_ID,
       name: 'E2E Metrics School',
-      teachers: {
+      users: {
         create: {
-          teacherId: teacher.id,
+          userId: teacher.id,
+          role: 'TEACHER',
         },
       },
       classes: {
@@ -142,7 +143,7 @@ async function seedMetricFixtures() {
       studentId: STUDENTS.attention.id,
       enrollmentId: `${STUDENTS.attention.id}-enrollment`,
       readingLevelId: levelByCode.SO.id,
-      teacherId: teacher.id,
+      userId: teacher.id,
       recordedAt: current,
     },
   })
@@ -152,7 +153,7 @@ async function seedMetricFixtures() {
       studentId: STUDENTS.missing.id,
       enrollmentId: `${STUDENTS.missing.id}-enrollment`,
       readingLevelId: levelByCode.RS.id,
-      teacherId: teacher.id,
+      userId: teacher.id,
       recordedAt: previous,
     },
   })
@@ -162,7 +163,7 @@ async function seedMetricFixtures() {
       studentId: STUDENTS.improved.id,
       enrollmentId: `${STUDENTS.improved.id}-enrollment`,
       readingLevelId: levelByCode.RW.id,
-      teacherId: teacher.id,
+      userId: teacher.id,
       recordedAt: previous,
     },
   })
@@ -172,7 +173,7 @@ async function seedMetricFixtures() {
       studentId: STUDENTS.improved.id,
       enrollmentId: `${STUDENTS.improved.id}-enrollment`,
       readingLevelId: levelByCode.RS.id,
-      teacherId: teacher.id,
+      userId: teacher.id,
       recordedAt: current,
     },
   })
@@ -182,7 +183,7 @@ async function seedMetricFixtures() {
       studentId: STUDENTS.control.id,
       enrollmentId: `${STUDENTS.control.id}-enrollment`,
       readingLevelId: levelByCode.RTF.id,
-      teacherId: teacher.id,
+      userId: teacher.id,
       recordedAt: current,
     },
   })

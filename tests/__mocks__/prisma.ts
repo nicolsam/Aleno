@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 
 // Mock Prisma Client
 export const mockPrisma = {
-  teacher: {
+  user: {
     findUnique: vi.fn(),
     create: vi.fn(),
   },
@@ -10,7 +10,7 @@ export const mockPrisma = {
     findMany: vi.fn(),
     create: vi.fn(),
   },
-  teacherSchool: {
+  userSchool: {
     findMany: vi.fn(),
     create: vi.fn(),
   },

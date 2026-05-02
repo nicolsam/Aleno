@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   mockVerifyToken,
-  mockFindTeacherSchool,
+  mockFindUser,
+  mockFindUserSchool,
   mockFindClass,
   mockUpdateClass,
   mockFindStudent,
@@ -11,7 +12,8 @@ const {
   mockLogAction,
 } = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
-  mockFindTeacherSchool: vi.fn(),
+  mockFindUser: vi.fn(),
+  mockFindUserSchool: vi.fn(),
   mockFindClass: vi.fn(),
   mockUpdateClass: vi.fn(),
   mockFindStudent: vi.fn(),
@@ -30,7 +32,8 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacherSchool: { findUnique: mockFindTeacherSchool },
+    user: { findUnique: mockFindUser },
+    userSchool: { findUnique: mockFindUserSchool },
     class: {
       findUnique: mockFindClass,
       update: mockUpdateClass,
@@ -68,7 +71,13 @@ describe('Restore APIs', () => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockVerifyToken.mockReturnValue({ id: 'teacher-1', email: 'teacher@test.com' })
-    mockFindTeacherSchool.mockResolvedValue({ teacherId: 'teacher-1', schoolId: 'school-1' })
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-1',
+      email: 'teacher@test.com',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'COORDINATOR' }],
+    })
+    mockFindUserSchool.mockResolvedValue({ userId: 'teacher-1', schoolId: 'school-1' })
     mockLogAction.mockResolvedValue(undefined)
   })
 
@@ -118,7 +127,12 @@ describe('Restore APIs', () => {
 
   it('rejects student restore without teacher-school access', async () => {
     mockFindStudent.mockResolvedValue({ id: 'student-1', schoolId: 'school-1' })
-    mockFindTeacherSchool.mockResolvedValue(null)
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-1',
+      email: 'teacher@test.com',
+      isGlobalAdmin: false,
+      schools: [],
+    })
 
     const response = await restoreStudent(createRequest(), context('student-1'))
     const data = await response.json()
@@ -128,7 +142,13 @@ describe('Restore APIs', () => {
     expect(mockUpdateStudent).not.toHaveBeenCalled()
   })
 
-  it('restores a school when the teacher has school access', async () => {
+  it('restores a school when the user is a global admin', async () => {
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-1',
+      email: 'teacher@test.com',
+      isGlobalAdmin: true,
+      schools: [],
+    })
     mockUpdateSchool.mockResolvedValue({ id: 'school-1', deletedAt: null })
 
     const response = await restoreSchool(createRequest(), context('school-1'))
@@ -136,9 +156,6 @@ describe('Restore APIs', () => {
 
     expect(response.status).toBe(200)
     expect(data.school.id).toBe('school-1')
-    expect(mockFindTeacherSchool).toHaveBeenCalledWith({
-      where: { teacherId_schoolId: { teacherId: 'teacher-1', schoolId: 'school-1' } },
-    })
     expect(mockUpdateSchool).toHaveBeenCalledWith({
       where: { id: 'school-1' },
       data: { deletedAt: null },

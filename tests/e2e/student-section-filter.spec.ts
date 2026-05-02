@@ -39,12 +39,12 @@ async function cleanupSectionFixtures() {
   await prisma.studentEnrollment.deleteMany({ where: { studentId: { in: STUDENT_IDS } } })
   await prisma.student.deleteMany({ where: { id: { in: STUDENT_IDS } } })
   await prisma.class.deleteMany({ where: { id: { in: CLASS_IDS } } })
-  await prisma.teacherSchool.deleteMany({ where: { schoolId: SCHOOL_ID } })
+  await prisma.userSchool.deleteMany({ where: { schoolId: SCHOOL_ID } })
   await prisma.school.deleteMany({ where: { id: SCHOOL_ID } })
 }
 
 async function seedSectionFixtures() {
-  const teacher = await prisma.teacher.findUnique({ where: { email: TEACHER_EMAIL } })
+  const teacher = await prisma.user.findUnique({ where: { email: TEACHER_EMAIL } })
   if (!teacher) throw new Error(`Missing E2E teacher: ${TEACHER_EMAIL}`)
 
   const academicYear = new Date().getFullYear()
@@ -52,9 +52,10 @@ async function seedSectionFixtures() {
     data: {
       id: SCHOOL_ID,
       name: 'E2E Section Filter School',
-      teachers: {
+      users: {
         create: {
-          teacherId: teacher.id,
+          userId: teacher.id,
+          role: 'TEACHER',
         },
       },
       classes: {

@@ -2,13 +2,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   mockVerifyToken,
-  mockFindTeacherSchools,
+  mockFindUserSchools,
   mockFindStudents,
   mockFindLevels,
   mockFindHistory,
 } = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
-  mockFindTeacherSchools: vi.fn(),
+  mockFindUserSchools: vi.fn(),
   mockFindStudents: vi.fn(),
   mockFindLevels: vi.fn(),
   mockFindHistory: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock('@/lib/auth', () => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacherSchool: { findMany: mockFindTeacherSchools },
+    userSchool: { findMany: mockFindUserSchools },
     student: { findMany: mockFindStudents },
     readingLevel: { findMany: mockFindLevels },
     studentReadingHistory: { findMany: mockFindHistory },
@@ -81,7 +81,7 @@ describe('API: /api/dashboard GET', () => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockVerifyToken.mockReturnValue({ id: 'teacher-1', email: 'teacher@test.com' })
-    mockFindTeacherSchools.mockResolvedValue([{ schoolId: 'school-1' }])
+    mockFindUserSchools.mockResolvedValue([{ schoolId: 'school-1' }])
     mockFindLevels.mockResolvedValue(levels)
     mockFindHistory.mockResolvedValue([])
   })

@@ -2,8 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 const {
   mockVerifyToken,
-  mockFindTeacherSchools,
-  mockFindTeacherSchool,
+  mockFindUser,
+  mockFindUserSchools,
+  mockFindUserSchool,
   mockFindStudents,
   mockFindClass,
   mockFindStudent,
@@ -11,8 +12,9 @@ const {
   mockLogAction,
 } = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
-  mockFindTeacherSchools: vi.fn(),
-  mockFindTeacherSchool: vi.fn(),
+  mockFindUser: vi.fn(),
+  mockFindUserSchools: vi.fn(),
+  mockFindUserSchool: vi.fn(),
   mockFindStudents: vi.fn(),
   mockFindClass: vi.fn(),
   mockFindStudent: vi.fn(),
@@ -30,9 +32,10 @@ vi.mock('@/lib/audit', () => ({
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacherSchool: {
-      findMany: mockFindTeacherSchools,
-      findUnique: mockFindTeacherSchool,
+    user: { findUnique: mockFindUser },
+    userSchool: {
+      findMany: mockFindUserSchools,
+      findUnique: mockFindUserSchool,
     },
     student: {
       findMany: mockFindStudents,
@@ -62,8 +65,14 @@ describe('API: /api/students', () => {
     vi.clearAllMocks()
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockVerifyToken.mockReturnValue({ id: 'teacher-1', email: 'teacher@test.com' })
-    mockFindTeacherSchools.mockResolvedValue([{ schoolId: 'school-1' }])
-    mockFindTeacherSchool.mockResolvedValue({ teacherId: 'teacher-1', schoolId: 'school-1' })
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-1',
+      email: 'teacher@test.com',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'COORDINATOR' }],
+    })
+    mockFindUserSchools.mockResolvedValue([{ schoolId: 'school-1' }])
+    mockFindUserSchool.mockResolvedValue({ userId: 'teacher-1', schoolId: 'school-1' })
     mockLogAction.mockResolvedValue(undefined)
   })
 
@@ -85,9 +94,7 @@ describe('API: /api/students', () => {
         latestAssessmentDate: null,
       }),
     ])
-    expect(mockFindTeacherSchool).toHaveBeenCalledWith({
-      where: { teacherId_schoolId: { teacherId: 'teacher-1', schoolId: 'school-1' } },
-    })
+    expect(mockFindUserSchool).not.toHaveBeenCalled()
     expect(mockFindStudents).toHaveBeenCalledWith(expect.objectContaining({
       include: expect.objectContaining({
         readingHistory: expect.not.objectContaining({
@@ -236,7 +243,12 @@ describe('API: /api/students', () => {
 
   it('POST rejects classes outside the teacher school access', async () => {
     mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-2', academicYear: 2026 })
-    mockFindTeacherSchool.mockResolvedValue(null)
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-1',
+      email: 'teacher@test.com',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'COORDINATOR' }],
+    })
 
     const response = await POST(createRequest('http://localhost/api/students', {
       name: 'Student 1',

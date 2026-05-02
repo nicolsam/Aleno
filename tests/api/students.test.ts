@@ -5,8 +5,8 @@ import { verifyToken } from '@/lib/auth'
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: { findUnique: vi.fn() },
-    teacherSchool: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn() },
+    userSchool: { findUnique: vi.fn() },
     student: { findUnique: vi.fn(), update: vi.fn() },
     studentEnrollment: { updateMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn() },
     class: { findUnique: vi.fn() },
@@ -34,9 +34,13 @@ describe('Students API PUT & DELETE', () => {
 
   const mockAccess = () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
-    vi.mocked(prisma.teacher.findUnique).mockResolvedValue({ id: 'teacher-1' } as never)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      id: 'teacher-1',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'COORDINATOR' }],
+    } as never)
     vi.mocked(prisma.student.findUnique).mockResolvedValue({ id: 'student-1', schoolId: 'school-1', classId: 'class-1' } as never)
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as never)
+    vi.mocked(prisma.userSchool.findUnique).mockResolvedValue({} as never)
     vi.mocked(prisma.class.findUnique).mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 } as never)
   }
 

@@ -5,8 +5,8 @@ import { verifyToken } from '@/lib/auth'
 
 vi.mock('@/lib/db', () => ({
   prisma: {
-    teacher: { findUnique: vi.fn() },
-    teacherSchool: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn() },
+    userSchool: { findUnique: vi.fn() },
     school: { update: vi.fn() },
     auditLog: { create: vi.fn() }
   }
@@ -25,20 +25,20 @@ describe('Schools API PUT & DELETE', () => {
     vi.clearAllMocks()
   })
 
-  const mockRequest = (body?: any) => ({
+  const mockRequest = (body?: unknown) => ({
     headers: new Headers({ authorization: 'Bearer valid-token' }),
     json: async () => body
   } as Request)
 
   const mockAccess = () => {
     vi.mocked(verifyToken).mockReturnValue({ id: 'teacher-1', email: 'test@example.com' })
-    vi.mocked(prisma.teacher.findUnique).mockResolvedValue({ id: 'teacher-1' } as any)
-    vi.mocked(prisma.teacherSchool.findUnique).mockResolvedValue({} as any)
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({ id: 'teacher-1', isGlobalAdmin: true, schools: [] } as never)
+    vi.mocked(prisma.userSchool.findUnique).mockResolvedValue({} as never)
   }
 
   it('PUT should update a school', async () => {
     mockAccess()
-    vi.mocked(prisma.school.update).mockResolvedValue({ id: 'school-1', name: 'Updated' } as any)
+    vi.mocked(prisma.school.update).mockResolvedValue({ id: 'school-1', name: 'Updated' } as never)
 
     const res = await PUT(mockRequest({ name: 'Updated', address: '123' }), { params: Promise.resolve({ id: 'school-1' }) })
     const data = await res.json()
@@ -53,7 +53,7 @@ describe('Schools API PUT & DELETE', () => {
 
   it('DELETE should soft delete a school', async () => {
     mockAccess()
-    vi.mocked(prisma.school.update).mockResolvedValue({ id: 'school-1' } as any)
+    vi.mocked(prisma.school.update).mockResolvedValue({ id: 'school-1' } as never)
 
     const res = await DELETE(mockRequest(), { params: Promise.resolve({ id: 'school-1' }) })
     const data = await res.json()

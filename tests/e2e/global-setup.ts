@@ -5,7 +5,7 @@ async function globalSetup() {
   const hashedPassword = await bcrypt.hash('playwright123', 10)
 
   // Seed Regular User
-  await prisma.teacher.upsert({
+  await prisma.user.upsert({
     where: { email: 'test-regular@example.com' },
     update: {
       password: hashedPassword,
@@ -20,7 +20,7 @@ async function globalSetup() {
   })
 
   // Seed Admin User
-  await prisma.teacher.upsert({
+  await prisma.user.upsert({
     where: { email: 'test-admin@example.com' },
     update: {
       password: hashedPassword,
