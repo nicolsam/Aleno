@@ -43,10 +43,22 @@ export const mockPrisma = {
 
 // Reset all mocks
 export function resetMocks() {
-  const mocks = [mockTeacher, mockSchool, mockUserSchool, mockStudent, mockReadingLevel, mockStudentReadingHistory]
+  type ResettableMock = {
+    mockReset: () => void
+    mockResolvedValue: (value: unknown) => void
+  }
+  const mocks: Record<string, ResettableMock>[] = [
+    mockTeacher,
+    mockSchool,
+    mockUserSchool,
+    mockStudent,
+    mockReadingLevel,
+    mockStudentReadingHistory,
+  ]
+
   mocks.forEach(model => {
     Object.keys(model).forEach((key: string) => {
-      const fn = (model as any)[key]
+      const fn = model[key]
       if (typeof fn.mockReset === 'function') {
         fn.mockReset()
         fn.mockResolvedValue(undefined)

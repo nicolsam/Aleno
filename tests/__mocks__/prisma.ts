@@ -37,7 +37,7 @@ vi.mock('@/lib/db', () => ({
 vi.mock('@/lib/auth', () => ({
   hashPassword: vi.fn().mockImplementation((password: string) => Promise.resolve(`hashed_${password}`)),
   verifyPassword: vi.fn().mockImplementation((password: string, hash: string) => Promise.resolve(password === 'test123' || hash.startsWith('hashed_'))),
-  generateToken: vi.fn().mockImplementation((payload: { id: string; email: string }) => 'mock.jwt.token'),
+  generateToken: vi.fn().mockImplementation(() => 'mock.jwt.token'),
   verifyToken: vi.fn().mockImplementation((token: string) => {
     if (token === 'mock.jwt.token') {
       return { id: 'teacher-1', email: 'test@test.com' }
