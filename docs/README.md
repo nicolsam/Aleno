@@ -1,6 +1,6 @@
-# Aleno Developer Handbook
+# Alfabetiza Developer Handbook
 
-This folder contains the long-term developer documentation for Aleno.
+This folder contains the long-term developer documentation for Alfabetiza.
 
 English is the canonical source. The Portuguese documentation mirrors the same structure so maintainers can move between both languages predictably.
 

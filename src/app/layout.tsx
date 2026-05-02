@@ -9,7 +9,7 @@ import { Toaster } from "@/components/ui/sonner";
 const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 export const metadata: Metadata = {
-  title: 'Aleno - Teacher Dashboard',
+  title: 'Alfabetiza - Teacher Dashboard',
   description: 'Track and analyze student reading skills',
 }
 

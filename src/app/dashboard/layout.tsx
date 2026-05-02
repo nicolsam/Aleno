@@ -117,7 +117,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <div className="min-h-screen flex">
       <aside className="w-64 bg-gray-800 text-white h-screen sticky top-0 flex flex-col flex-shrink-0">
         <div className="p-4">
-          <h1 className="text-xl font-bold">Aleno</h1>
+          <h1 className="text-xl font-bold">Alfabetiza</h1>
           {user && mounted && <p className="text-sm text-gray-300 mt-1">{user.name}</p>}
           {mounted && sidebarAssignments.length > 0 && (
             <div className="mt-3 space-y-2">

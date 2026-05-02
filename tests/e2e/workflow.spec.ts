@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('Aleno E2E Workflow', () => {
+test.describe('Alfabetiza E2E Workflow', () => {
   test.beforeEach(async ({ context }) => {
     // Force Portuguese locale
     await context.addCookies([{

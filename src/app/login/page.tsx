@@ -47,7 +47,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="max-w-md w-full p-8 bg-white rounded-lg shadow-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Aleno</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">Alfabetiza</h1>
         <h2 className="text-lg text-center mb-6 text-gray-600">
           {t('login')}
         </h2>
