@@ -1,5 +1,3 @@
-'use client'
-
 export default function StudentProfileSkeleton() {
   return (
     <div className="max-w-4xl mx-auto animate-pulse">

@@ -1,5 +1,3 @@
-'use client'
-
 export default function DashboardSkeleton() {
   return (
     <div className="w-full space-y-6 animate-pulse">

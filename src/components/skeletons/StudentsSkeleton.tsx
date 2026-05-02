@@ -1,5 +1,3 @@
-'use client'
-
 export default function StudentsSkeleton() {
   return (
     <div className="w-full animate-pulse space-y-6">
