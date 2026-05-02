@@ -17,6 +17,10 @@ function normalizeRole(role: unknown): string | null {
   return typeof role === 'string' && MANAGEABLE_ROLES.includes(role as (typeof MANAGEABLE_ROLES)[number]) ? role : null
 }
 
+function hasCoordinatorAssignment(user: { schools: { role: string }[] }): boolean {
+  return user.schools.some((school) => school.role === USER_SCHOOL_ROLES.COORDINATOR)
+}
+
 function serializeUser(user: {
   id: string
   name: string
@@ -130,8 +134,38 @@ export async function POST(request: Request) {
     const school = await prisma.school.findFirst({ where: { id: schoolId, deletedAt: null } })
     if (!school) return NextResponse.json({ error: 'School not found' }, { status: 404 })
 
-    const existingUser = await prisma.user.findUnique({ where: { email } })
-    if (existingUser) return NextResponse.json({ error: 'Email already exists' }, { status: 400 })
+    const existingUser = await prisma.user.findUnique({
+      where: { email },
+      include: { schools: { include: { school: { select: { id: true, name: true } } } } },
+    })
+    if (existingUser) {
+      if (existingUser.isGlobalAdmin) return forbiddenResponse()
+      if (existingUser.schools.some((userSchool) => userSchool.schoolId === schoolId)) {
+        return NextResponse.json({ error: 'User already assigned to this school' }, { status: 400 })
+      }
+      if (role === USER_SCHOOL_ROLES.COORDINATOR && hasCoordinatorAssignment(existingUser)) {
+        return NextResponse.json({ error: 'Coordinator already assigned to a school' }, { status: 400 })
+      }
+
+      await prisma.userSchool.create({
+        data: {
+          userId: existingUser.id,
+          schoolId,
+          role,
+        },
+      })
+
+      const reassignedUser = await prisma.user.findUnique({
+        where: { id: existingUser.id },
+        include: { schools: { include: { school: { select: { id: true, name: true } } } } },
+      })
+      if (!reassignedUser) return NextResponse.json({ error: 'User not found' }, { status: 404 })
+
+      const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
+      await logAction(auth.user.id, 'ASSIGN_USER_SCHOOL', { userId: existingUser.id, role, schoolId }, ipAddress)
+
+      return NextResponse.json({ user: serializeUser(reassignedUser) })
+    }
 
     const existingInvite = await prisma.userInvite.findFirst({
       where: { email, acceptedAt: null },

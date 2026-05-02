@@ -63,6 +63,18 @@ export default function TeachersPage() {
 
   const isGlobalAdmin = Boolean(user?.isGlobalAdmin)
 
+  const getInviteErrorMessage = (error: string | undefined) => {
+    const errorMap: Record<string, string> = {
+      Forbidden: 'forbidden',
+      'Email already exists': 'emailExists',
+      'Invite already exists': 'inviteAlreadyExists',
+      'User already assigned to this school': 'alreadyAssigned',
+      'Coordinator already assigned to a school': 'coordinatorAlreadyAssigned',
+    }
+
+    return t(error ? errorMap[error] || 'inviteError' : 'inviteError')
+  }
+
   useEffect(() => {
     const token = localStorage.getItem('token')
     const storedUser = getStoredUser()
@@ -151,7 +163,19 @@ export default function TeachersPage() {
     const data = await response.json()
 
     if (!response.ok) {
-      toast.error(data.error || t('inviteError'))
+      toast.error(getInviteErrorMessage(data.error))
+      return
+    }
+
+    if (data.user) {
+      setUsers((current) => (
+        current.some((currentUser) => currentUser.id === data.user.id)
+          ? current.map((currentUser) => currentUser.id === data.user.id ? data.user : currentUser)
+          : [data.user, ...current]
+      ))
+      setInvites((current) => current.filter((invite) => invite.email !== data.user.email))
+      closeInviteModal()
+      toast.success(t('userAssigned'))
       return
     }
 
