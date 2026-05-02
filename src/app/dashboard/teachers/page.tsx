@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Copy, Pencil, Trash2, UserPlus } from 'lucide-react'
+import { Copy, Pencil, Search, Trash2, UserPlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
   AlertDialog,
@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { canManageTeachers, getStoredUser, type StoredUser } from '@/lib/client-auth'
+import { filterBySearchQuery } from '@/lib/search'
 
 type School = {
   id: string
@@ -55,6 +56,11 @@ type PendingUnassign = {
   schoolId: string
 }
 
+type ActiveTeacherRow = {
+  managedUser: ManagedUser
+  school: ManagedUser['schools'][number]
+}
+
 const ROLE_TEACHER = 'TEACHER'
 const ROLE_COORDINATOR = 'COORDINATOR'
 type InviteModalStep = 'form' | 'link'
@@ -68,6 +74,7 @@ export default function TeachersPage() {
   const [users, setUsers] = useState<ManagedUser[]>([])
   const [invites, setInvites] = useState<PendingInvite[]>([])
   const [schoolId, setSchoolId] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const [inviteLink, setInviteLink] = useState('')
   const [inviteStep, setInviteStep] = useState<InviteModalStep>('form')
   const [showInviteModal, setShowInviteModal] = useState(false)
@@ -78,6 +85,21 @@ export default function TeachersPage() {
   const [pendingUnassign, setPendingUnassign] = useState<PendingUnassign | null>(null)
 
   const isGlobalAdmin = Boolean(user?.isGlobalAdmin)
+  const activeTeacherRows: ActiveTeacherRow[] = users.flatMap((managedUser) => (
+    managedUser.schools.map((school) => ({ managedUser, school }))
+  ))
+  const filteredTeacherRows = filterBySearchQuery(activeTeacherRows, searchQuery, ({ managedUser, school }) => [
+    managedUser.name,
+    managedUser.email,
+    school.schoolName,
+    t(`roles.${school.role}`),
+  ])
+  const filteredInvites = filterBySearchQuery(invites, searchQuery, (invite) => [
+    invite.name,
+    invite.email,
+    invite.schoolName,
+    t(`roles.${invite.role}`),
+  ])
 
   const getInviteErrorMessage = (error: string | undefined) => {
     const errorMap: Record<string, string> = {
@@ -274,6 +296,24 @@ export default function TeachersPage() {
         </CardHeader>
       </Card>
 
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-1">
+            <Label>{tCommon('searchPlaceholder')}</Label>
+            <div className="relative">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                data-testid="teachers-search"
+                aria-label={tCommon('searchPlaceholder')}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {showInviteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
@@ -438,11 +478,15 @@ export default function TeachersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.length === 0 ? (
+                {activeTeacherRows.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-4 text-center text-gray-700">{t('empty')}</td>
                   </tr>
-                ) : users.map((managedUser) => managedUser.schools.map((school) => (
+                ) : filteredTeacherRows.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-4 text-center text-gray-700">{tCommon('noSearchResults')}</td>
+                  </tr>
+                ) : filteredTeacherRows.map(({ managedUser, school }) => (
                   <tr key={`${managedUser.id}-${school.schoolId}`} className="border-t">
                     <td className="p-4">{managedUser.name}</td>
                     <td className="p-4">{managedUser.email}</td>
@@ -469,7 +513,7 @@ export default function TeachersPage() {
                       </Button>
                     </td>
                   </tr>
-                )))}
+                ))}
               </tbody>
             </table>
           </div>
@@ -485,7 +529,9 @@ export default function TeachersPage() {
             <p className="text-sm text-gray-600">{t('noPendingInvites')}</p>
           ) : (
             <div className="space-y-2">
-              {invites.map((invite) => (
+              {filteredInvites.length === 0 ? (
+                <p className="text-sm text-gray-600">{tCommon('noSearchResults')}</p>
+              ) : filteredInvites.map((invite) => (
                 <div key={invite.id} className="space-y-2 border-b py-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>{invite.name} · {invite.email}</span>

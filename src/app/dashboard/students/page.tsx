@@ -16,13 +16,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import Link from 'next/link'
-import { ArrowRight, Pencil, Trash2 } from "lucide-react"
+import { ArrowRight, Pencil, Search, Trash2 } from "lucide-react"
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
 import { getStudentMetricCounts } from '@/lib/student-metrics'
 import { getSectionOptionsForGrade, resolveSectionFilter } from '@/lib/class-filters'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
+import { filterBySearchQuery } from '@/lib/search'
 import {
   buildMonthKey,
   getAvailableMonthOptions,
@@ -147,6 +148,7 @@ export default function StudentsPage() {
   const [gradeFilter, setGradeFilter] = useState('')
   const [sectionFilter, setSectionFilter] = useState('')
   const [shiftFilter, setShiftFilter] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
   const sectionOptions = getSectionOptionsForGrade(classes, gradeFilter)
 
   const handleGradeFilterChange = (value: string) => {
@@ -372,12 +374,28 @@ export default function StudentsPage() {
     return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)}) - ${c.academicYear}`
   }
 
+  const getCurrentLevelLabel = (student: Student) => (
+    student.readingHistory?.[0] ? tLevels(student.readingHistory[0].readingLevel.code) : t('notAssessed')
+  )
+
+  const getMonthlyUpdateLabel = (student: Student) => (
+    student.monthlyUpdateStatus === 'updated'
+      ? (student.monthStatus === 'current' ? t('monthlyUpdated') : t('monthlyUpdatedPast'))
+      : (student.monthStatus === 'current' ? t('monthlyMissing') : t('monthlyMissingPast'))
+  )
 
   const missingUpdatesHref = buildDashboardActionListHref('/dashboard/students/missing-updates', { month: selectedMonth, schoolId })
   const needAttentionHref = buildDashboardActionListHref('/dashboard/students/need-attention', { month: selectedMonth, schoolId })
   const improvedHref = buildDashboardActionListHref('/dashboard/students/improved', { month: selectedMonth, schoolId })
   const studentMetrics = getStudentMetricCounts(students, selectedMonth)
   const canManageStudents = canManageSchoolScopedRecords(user)
+  const filteredStudents = filterBySearchQuery(students, searchQuery, (student) => [
+    student.name,
+    student.studentNumber,
+    formatClassName(student.class),
+    getCurrentLevelLabel(student),
+    getMonthlyUpdateLabel(student),
+  ])
 
   if (loading) {
     return <StudentsSkeleton />
@@ -407,6 +425,19 @@ export default function StudentsPage() {
 
       <div className="mb-6 space-y-4 bg-white p-4 rounded-lg shadow">
         <div className="grid gap-4 md:flex md:flex-wrap md:items-end">
+          <div className="space-y-1 md:min-w-64 md:flex-1">
+            <Label>{tCommon('searchPlaceholder')}</Label>
+            <div className="relative">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                data-testid="students-search"
+                aria-label={tCommon('searchPlaceholder')}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
           <div className="space-y-1 md:w-56">
             <Label>{tClasses('school')}</Label>
             <Select value={schoolId || '__all__'} onValueChange={handleSchoolFilterChange}>
@@ -576,8 +607,14 @@ export default function StudentsPage() {
                   {t('noStudents')}
                 </td>
               </tr>
+            ) : filteredStudents.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-4 text-center text-gray-700">
+                  {tCommon('noSearchResults')}
+                </td>
+              </tr>
             ) : (
-              students.map((student) => (
+              filteredStudents.map((student) => (
                 <tr key={student.id} className="border-t hover:bg-gray-50 group">
                   <td className="p-4">
                     <a href={`/dashboard/students/${student.id}`} className="text-blue-600 hover:underline font-medium">
@@ -594,16 +631,14 @@ export default function StudentsPage() {
                         color: getReadingLevelStyle(student.readingHistory?.[0]?.readingLevel.code).textColor,
                       }}
                     >
-                      {student.readingHistory?.[0] ? tLevels(student.readingHistory[0].readingLevel.code) : t('notAssessed')}
+                      {getCurrentLevelLabel(student)}
                     </span>
                   </td>
                   <td className="p-4">
                     <Badge
                       variant={student.monthlyUpdateStatus === 'updated' ? 'success' : 'warning'}
                     >
-                      {student.monthlyUpdateStatus === 'updated'
-                        ? (student.monthStatus === 'current' ? t('monthlyUpdated') : t('monthlyUpdatedPast'))
-                        : (student.monthStatus === 'current' ? t('monthlyMissing') : t('monthlyMissingPast'))}
+                      {getMonthlyUpdateLabel(student)}
                     </Badge>
                   </td>
                   <td className="p-4">

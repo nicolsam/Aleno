@@ -15,7 +15,10 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Search, Trash2 } from "lucide-react"
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { filterBySearchQuery } from '@/lib/search'
 
 interface School {
   id: string
@@ -30,6 +33,7 @@ export default function SchoolsPage() {
   const tErrors = useTranslations('errors')
   const [schools, setSchools] = useState<School[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [newSchool, setNewSchool] = useState({ name: '', address: '' })
   
@@ -137,6 +141,11 @@ export default function SchoolsPage() {
     return <SchoolsSkeleton />
   }
 
+  const filteredSchools = filterBySearchQuery(schools, searchQuery, (school) => [
+    school.name,
+    school.address,
+  ])
+
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
@@ -149,13 +158,33 @@ export default function SchoolsPage() {
         </button>
       </div>
 
+      <div className="mb-6 bg-white p-4 rounded-lg shadow">
+        <div className="space-y-1">
+          <Label>{tCommon('searchPlaceholder')}</Label>
+          <div className="relative">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              data-testid="schools-search"
+              aria-label={tCommon('searchPlaceholder')}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              className="pl-9"
+            />
+          </div>
+        </div>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {schools.length === 0 ? (
           <div className="bg-white p-6 rounded-lg shadow text-center text-gray-700 col-span-full">
             {t('noSchools')}
           </div>
+        ) : filteredSchools.length === 0 ? (
+          <div className="bg-white p-6 rounded-lg shadow text-center text-gray-700 col-span-full">
+            {tCommon('noSearchResults')}
+          </div>
         ) : (
-          schools.map((school) => (
+          filteredSchools.map((school) => (
             <div key={school.id} className="bg-white p-6 rounded-lg shadow relative group">
               <h3 className="text-lg font-semibold text-gray-800">{school.name}</h3>
               <p className="text-gray-600 text-sm">{school.address || t('noAddress')}</p>

@@ -15,9 +15,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Search, Trash2 } from "lucide-react"
 import { ACADEMIC_YEARS, getDefaultAcademicYear } from '@/lib/academic-years'
 import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { filterBySearchQuery } from '@/lib/search'
 import {
   Select,
   SelectContent,
@@ -57,6 +59,7 @@ export default function ClassesPage() {
   const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [schoolId, setSchoolId] = useState('')
   const [academicYearFilter, setAcademicYearFilter] = useState(String(DEFAULT_ACADEMIC_YEAR))
+  const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<StoredUser | null>(null)
   const [showModal, setShowModal] = useState(false)
@@ -217,6 +220,13 @@ export default function ClassesPage() {
   }
 
   const canManageClasses = canManageSchoolScopedRecords(user)
+  const filteredClasses = filterBySearchQuery(classes, searchQuery, (classRecord) => [
+    classRecord.grade,
+    classRecord.academicYear,
+    classRecord.section,
+    t(`shifts.${classRecord.shift}`),
+    classRecord.school?.name,
+  ])
 
   return (
     <div>
@@ -234,6 +244,19 @@ export default function ClassesPage() {
 
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
         <div className="grid gap-4 md:flex md:flex-wrap md:items-end">
+          <div className="space-y-1 md:min-w-64 md:flex-1">
+            <Label className="text-gray-700">{tCommon('searchPlaceholder')}</Label>
+            <div className="relative">
+              <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                data-testid="classes-search"
+                aria-label={tCommon('searchPlaceholder')}
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </div>
           <div className="space-y-1 md:w-56">
             <Label className="text-gray-700">{t('school')}</Label>
             <Select value={schoolId || '__all__'} onValueChange={handleSchoolFilterChange}>
@@ -300,8 +323,14 @@ export default function ClassesPage() {
                   {t('noClasses')}
                 </td>
               </tr>
+            ) : filteredClasses.length === 0 ? (
+              <tr>
+                <td colSpan={canManageClasses ? 6 : 5} className="p-4 text-center text-gray-700">
+                  {tCommon('noSearchResults')}
+                </td>
+              </tr>
             ) : (
-              classes.map((c) => (
+              filteredClasses.map((c) => (
                 <tr key={c.id} className="border-t hover:bg-gray-50 group">
                   <td className="p-4 text-gray-800">{c.grade}</td>
                   <td className="p-4 text-gray-800">{c.academicYear}</td>

@@ -9,6 +9,8 @@
     "undo": "Desfazer",
     "confirmDelete": "Tem certeza que deseja excluir?",
     "deleteWarning": "Esta ação não pode ser desfeita.",
+    "searchPlaceholder": "Buscar",
+    "noSearchResults": "Nenhum resultado encontrado.",
     "createSchool": "Criar uma Escola",
     "addSchool": "Adicionar Escola",
     "actions": "Ações"

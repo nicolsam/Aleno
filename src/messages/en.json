@@ -9,6 +9,8 @@
     "undo": "Undo",
     "confirmDelete": "Are you sure you want to delete this?",
     "deleteWarning": "This action cannot be undone.",
+    "searchPlaceholder": "Search",
+    "noSearchResults": "No results found.",
     "createSchool": "Create a School",
     "addSchool": "Add School",
     "actions": "Actions"
