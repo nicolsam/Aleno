@@ -16,6 +16,7 @@ vi.mock('@/lib/db', () => ({
       update: vi.fn(),
     },
     studentReadingHistory: { findMany: vi.fn() },
+    studentCommentary: { findMany: vi.fn() },
     auditLog: { create: vi.fn() },
   },
 }))
@@ -157,6 +158,7 @@ describe('public student parent reports', () => {
         user: { name: 'Teacher' },
       },
     ] as never)
+    vi.mocked(prisma.studentCommentary.findMany).mockResolvedValue([] as never)
 
     const report = await getStudentParentReportByToken('token', new Date('2026-05-03T12:00:00.000Z'))
 
