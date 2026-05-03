@@ -60,7 +60,7 @@ export default async function StudentParentReportPage({ params }: ReportPageProp
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8">
-      <article className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+      <article className="mx-auto max-w-5xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
         <header className="border-b border-gray-200 bg-white p-6">
           <p className="text-sm font-medium uppercase tracking-wide text-gray-500">{t('eyebrow')}</p>
           <div className="mt-4 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

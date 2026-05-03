@@ -9,6 +9,7 @@ import { ArrowLeft, TrendingUp, User, BookOpen, Trash2, BarChart2, Edit2, Check 
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
 import { buildReadingLevelAxisLabels, buildStudentProgressChartData } from '@/lib/student-progress-chart'
+import { getLocalDateString, formatPayloadDate } from '@/lib/date-utils'
 import StudentProfileSkeleton from '@/components/skeletons/StudentProfileSkeleton'
 import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 import StudentContactsAndReportShare from '@/components/students/StudentContactsAndReportShare'
@@ -222,16 +223,17 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
   const openEditModal = (item: TimelineItem) => {
     setEditingItem(item)
+    const localDate = getLocalDateString(item.recordedAt)
     if (item.type === 'history') {
       setEditHistoryData({
         readingLevelId: item.readingLevel.id || '',
-        recordedAt: new Date(item.recordedAt).toISOString().slice(0, 10),
+        recordedAt: localDate,
         notes: item.notes || ''
       })
     } else {
       setEditCommentaryData({
         commentary: item.commentary,
-        recordedAt: new Date(item.recordedAt).toISOString().slice(0, 10)
+        recordedAt: localDate
       })
     }
   }
@@ -246,7 +248,9 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       ? `/api/students/${studentId}/history/${editingItem.id}`
       : `/api/students/${studentId}/commentaries/${editingItem.id}`
 
-    const body = editingItem.type === 'history' ? editHistoryData : editCommentaryData
+    const body = editingItem.type === 'history' 
+      ? { ...editHistoryData, recordedAt: formatPayloadDate(editHistoryData.recordedAt, editingItem.recordedAt) } 
+      : { ...editCommentaryData, recordedAt: formatPayloadDate(editCommentaryData.recordedAt, editingItem.recordedAt) }
 
     const res = await fetch(endpoint, {
       method: 'PUT',

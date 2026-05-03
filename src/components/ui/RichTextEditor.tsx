@@ -137,16 +137,16 @@ export default function RichTextEditor({ value, onChange, placeholder, minHeight
         </MenuButton>
       </div>
       <div 
-        className="cursor-text" 
+        className="relative cursor-text" 
         style={{ minHeight }}
         onClick={() => editor.commands.focus()}
       >
-        <EditorContent editor={editor} />
         {editor.isEmpty && placeholder && (
-          <div className="pointer-events-none absolute pl-4 pt-3 top-10 text-gray-400">
+          <div className="pointer-events-none absolute top-0 left-0 px-4 py-3 text-gray-400">
             {placeholder}
           </div>
         )}
+        <EditorContent editor={editor} />
       </div>
     </div>
   )
