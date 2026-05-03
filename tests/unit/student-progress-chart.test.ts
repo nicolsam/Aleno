@@ -5,11 +5,13 @@ describe('student progress chart helpers', () => {
   it('builds chronological chart points from descending reading history', () => {
     const chartData = buildStudentProgressChartData([
       {
+        id: 'id-2',
         recordedAt: '2026-05-03T12:00:00.000Z',
         notes: 'Current',
         readingLevel: { code: 'RW', order: 4 },
       },
       {
+        id: 'id-1',
         recordedAt: '2026-04-03T12:00:00.000Z',
         notes: 'Previous',
         readingLevel: { code: 'SO', order: 3 },
@@ -17,8 +19,8 @@ describe('student progress chart helpers', () => {
     ], 'en', (code) => `Level ${code}`)
 
     expect(chartData).toEqual([
-      { date: 'Apr 03', level: 3, levelName: 'Level SO', notes: 'Previous' },
-      { date: 'May 03', level: 4, levelName: 'Level RW', notes: 'Current' },
+      { id: 'id-1', date: 'Apr 03', level: 3, levelName: 'Level SO', code: 'SO', notes: 'Previous' },
+      { id: 'id-2', date: 'May 03', level: 4, levelName: 'Level RW', code: 'RW', notes: 'Current' },
     ])
   })
 

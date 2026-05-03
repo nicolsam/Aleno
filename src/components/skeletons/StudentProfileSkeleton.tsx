@@ -1,6 +1,6 @@
 export default function StudentProfileSkeleton() {
   return (
-    <div className="max-w-4xl mx-auto animate-pulse">
+    <div className="w-full animate-pulse">
       {/* Back link skeleton */}
       <div className="h-4 bg-gray-200 rounded w-24 mb-6" />
 
@@ -20,15 +20,36 @@ export default function StudentProfileSkeleton() {
           </div>
           <div className="flex flex-col items-end gap-2">
             <div className="h-8 bg-gray-100 rounded-full w-24" />
-            <div className="h-10 bg-gray-200 rounded-lg w-32" />
+            <div className="flex gap-2">
+              <div className="h-10 bg-gray-200 rounded-lg w-32" />
+              <div className="h-10 bg-gray-200 rounded-lg w-32" />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Progress Chart skeleton */}
-      <div className="bg-white rounded-lg shadow p-6 mb-6">
-        <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
-        <div className="h-64 bg-gray-50 rounded w-full" />
+      {/* Contacts and Sharing Grid skeleton */}
+      <div className="grid gap-6 lg:grid-cols-[60%_40%] mb-6">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="h-6 bg-gray-200 rounded w-1/4 mb-4" />
+          <div className="h-20 bg-gray-50 rounded w-full" />
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4" />
+          <div className="h-20 bg-gray-50 rounded w-full" />
+        </div>
+      </div>
+
+      {/* Progress Charts skeleton */}
+      <div className="mb-6 grid gap-6 lg:grid-cols-2">
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4" />
+          <div className="h-[280px] bg-gray-50 rounded w-full" />
+        </div>
+        <div className="bg-white rounded-lg shadow p-6">
+          <div className="h-6 bg-gray-200 rounded w-1/3 mb-4" />
+          <div className="h-[280px] bg-gray-50 rounded w-full" />
+        </div>
       </div>
 
       {/* History Timeline skeleton */}

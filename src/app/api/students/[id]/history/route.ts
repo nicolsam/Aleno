@@ -21,6 +21,15 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
     if (!hasSchoolAccess(auth.user, student.schoolId)) return forbiddenResponse()
 
+    const userSelect = { 
+      name: true, 
+      isGlobalAdmin: true, 
+      schools: { 
+        where: { schoolId: student.school.id }, 
+        select: { role: true } 
+      } 
+    }
+
     const history = await prisma.studentReadingHistory.findMany({
       where: { studentId: id },
       orderBy: [
@@ -29,7 +38,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       ],
       include: {
         readingLevel: true,
-        user: { select: { name: true } },
+        user: { select: userSelect },
       },
     })
 
@@ -40,14 +49,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         { createdAt: 'desc' },
       ],
       include: {
-        user: { select: { name: true } },
+        user: { select: userSelect },
       },
+    })
+
+    const mapTeacher = (user: any) => ({
+      name: user.name,
+      role: user.isGlobalAdmin ? 'Admin' : (user.schools?.[0]?.role === 'COORDINATOR' ? 'Coordinator' : 'Teacher')
     })
 
     return NextResponse.json({
       student,
-      history: history.map((entry) => ({ ...entry, teacher: entry.user })),
-      commentaries: commentaries.map((entry: any) => ({ ...entry, teacher: entry.user })),
+      history: history.map((entry) => ({ ...entry, teacher: mapTeacher(entry.user) })),
+      commentaries: commentaries.map((entry: any) => ({ ...entry, teacher: mapTeacher(entry.user) })),
     })
   } catch (error) {
     console.error('Student history error:', error)

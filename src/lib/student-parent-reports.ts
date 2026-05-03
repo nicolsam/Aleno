@@ -6,7 +6,7 @@ export type StudentParentReport = {
     id: string
     name: string
     studentNumber: string
-    school: { name: string }
+    school: { name: string; id: string }
     class: {
       grade: string
       section: string
@@ -20,7 +20,13 @@ export type StudentParentReport = {
     recordedAt: Date
     notes: string | null
     readingLevel: { code: string; name: string; order: number }
-    teacher: { name: string }
+    teacher: { name: string; role: string }
+  }[]
+  commentaries: {
+    id: string
+    recordedAt: Date
+    commentary: string
+    teacher: { name: string; role: string }
   }[]
 }
 
@@ -34,7 +40,7 @@ export async function getStudentParentReportByToken(
     include: {
       student: {
         include: {
-          school: { select: { name: true, deletedAt: true } },
+          school: { select: { id: true, name: true, deletedAt: true } },
           class: {
             select: {
               grade: true,
@@ -57,16 +63,36 @@ export async function getStudentParentReportByToken(
     data: { lastViewedAt: now },
   })
 
-  const history = await prisma.studentReadingHistory.findMany({
-    where: { studentId: reportLink.studentId },
-    orderBy: [
-      { recordedAt: 'desc' },
-      { createdAt: 'desc' },
-    ],
-    include: {
-      readingLevel: { select: { code: true, name: true, order: true } },
-      user: { select: { name: true } },
-    },
+  const userSelect = { 
+    name: true, 
+    isGlobalAdmin: true, 
+    schools: { 
+      where: { schoolId: reportLink.student.school.id }, 
+      select: { role: true } 
+    } 
+  }
+
+  const [history, commentaries] = await Promise.all([
+    prisma.studentReadingHistory.findMany({
+      where: { studentId: reportLink.studentId },
+      orderBy: [{ recordedAt: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        readingLevel: { select: { code: true, name: true, order: true } },
+        user: { select: userSelect },
+      },
+    }),
+    prisma.studentCommentary.findMany({
+      where: { studentId: reportLink.studentId },
+      orderBy: [{ recordedAt: 'desc' }, { createdAt: 'desc' }],
+      include: {
+        user: { select: userSelect },
+      },
+    })
+  ])
+
+  const mapTeacher = (user: any) => ({
+    name: user.name,
+    role: user.isGlobalAdmin ? 'Admin' : (user.schools?.[0]?.role === 'COORDINATOR' ? 'Coordinator' : 'Teacher')
   })
 
   return {
@@ -75,9 +101,10 @@ export async function getStudentParentReportByToken(
       id: reportLink.student.id,
       name: reportLink.student.name,
       studentNumber: reportLink.student.studentNumber,
-      school: { name: reportLink.student.school.name },
+      school: { id: reportLink.student.school.id, name: reportLink.student.school.name },
       class: reportLink.student.class,
     },
-    history: history.map((entry) => ({ ...entry, teacher: entry.user })),
+    history: history.map((entry) => ({ ...entry, teacher: mapTeacher(entry.user) })),
+    commentaries: commentaries.map((entry) => ({ ...entry, teacher: mapTeacher(entry.user) })),
   }
 }

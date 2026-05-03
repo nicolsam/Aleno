@@ -1,6 +1,6 @@
 'use client'
 
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 
 type ChartPoint = {
@@ -12,58 +12,16 @@ type ChartPoint = {
   notes: string | null
 }
 
-export default function StudentProgressChart({
+export default function StudentProgressBarChart({
   data,
   levelLabels,
 }: {
   data: ChartPoint[]
   levelLabels: Record<number, string>
 }) {
-  const CustomDot = (props: any) => {
-    const { cx, cy, payload } = props
-    if (!cx || !cy) return null
-
-    const style = getReadingLevelStyle(payload.code)
-
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={5}
-        stroke={style.color}
-        strokeWidth={2}
-        fill="#ffffff"
-      />
-    )
-  }
-
-  const CustomActiveDot = (props: any) => {
-    const { cx, cy, payload } = props
-    if (!cx || !cy) return null
-
-    const style = getReadingLevelStyle(payload.code)
-
-    return (
-      <circle
-        cx={cx}
-        cy={cy}
-        r={7}
-        fill={style.color}
-        stroke="#ffffff"
-        strokeWidth={2}
-      />
-    )
-  }
-
   return (
     <ResponsiveContainer width="100%" height={280}>
-      <AreaChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 5 }}>
-        <defs>
-          <linearGradient id="colorLevel" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-          </linearGradient>
-        </defs>
+      <BarChart data={data} margin={{ top: 10, right: 20, left: 20, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
         <XAxis 
           dataKey="id" 
@@ -86,6 +44,7 @@ export default function StudentProgressChart({
           tickLine={false}
         />
         <Tooltip
+          cursor={{ fill: '#f9fafb' }}
           content={({ active, payload }) => {
             if (!active || !payload?.length) return null
 
@@ -106,17 +65,12 @@ export default function StudentProgressChart({
             )
           }}
         />
-        <Area
-          type="stepAfter"
-          dataKey="level"
-          stroke="#3B82F6"
-          strokeWidth={3}
-          fillOpacity={1}
-          fill="url(#colorLevel)"
-          dot={<CustomDot />}
-          activeDot={<CustomActiveDot />}
-        />
-      </AreaChart>
+        <Bar dataKey="level" radius={[4, 4, 0, 0]} maxBarSize={50}>
+          {data.map((entry) => (
+            <Cell key={`cell-${entry.id}`} fill={getReadingLevelStyle(entry.code).color} />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   )
 }

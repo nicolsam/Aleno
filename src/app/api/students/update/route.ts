@@ -60,6 +60,7 @@ export async function PATCH(request: Request) {
         readingLevelId,
         userId: auth.user.id,
         recordedAt: assessmentDate,
+        notes: body.notes || null,
       },
     })
 

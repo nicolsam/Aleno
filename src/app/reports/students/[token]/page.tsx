@@ -1,10 +1,11 @@
 import { getTranslations, getLocale } from 'next-intl/server'
 import { connection } from 'next/server'
-import { BookOpen, CalendarDays, School, TrendingUp, UserRound } from 'lucide-react'
+import { BookOpen, CalendarDays, School, TrendingUp, UserRound, BarChart2 } from 'lucide-react'
 import { getStudentParentReportByToken } from '@/lib/student-parent-reports'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { buildReadingLevelAxisLabels, buildStudentProgressChartData } from '@/lib/student-progress-chart'
 import StudentProgressChart from '@/components/dashboard/StudentProgressChart'
+import StudentProgressBarChart from '@/components/dashboard/StudentProgressBarChart'
 
 type ReportPageProps = {
   params: Promise<{ token: string }>
@@ -52,6 +53,11 @@ export default async function StudentParentReportPage({ params }: ReportPageProp
   const chartData = buildStudentProgressChartData(report.history, locale, tLevels)
   const levelLabels = buildReadingLevelAxisLabels(tLevels)
 
+  const timeline = [
+    ...report.history.map((h) => ({ ...h, type: 'history' as const })),
+    ...report.commentaries.map((c) => ({ ...c, type: 'commentary' as const }))
+  ].sort((a, b) => new Date(b.recordedAt).getTime() - new Date(a.recordedAt).getTime())
+
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8">
       <article className="mx-auto max-w-3xl overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
@@ -89,13 +95,22 @@ export default async function StudentParentReportPage({ params }: ReportPageProp
         </header>
 
         {chartData.length > 0 && (
-          <section className="border-b border-gray-200 p-6">
-            <div className="mb-4 flex items-center gap-2">
-              <TrendingUp className="size-5 text-blue-600" />
-              <h2 className="text-xl font-semibold text-gray-900">{t('progressChart')}</h2>
-            </div>
-            <StudentProgressChart data={chartData} levelLabels={levelLabels} />
-          </section>
+          <div className="border-b border-gray-200 p-6 grid gap-6 lg:grid-cols-2 bg-gray-50/50">
+            <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <TrendingUp className="size-5 text-blue-600" />
+                <h2 className="text-xl font-semibold text-gray-900">{t('progressChart')}</h2>
+              </div>
+              <StudentProgressChart data={chartData} levelLabels={levelLabels} />
+            </section>
+            <section className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <BarChart2 className="size-5 text-blue-600" />
+                <h2 className="text-xl font-semibold text-gray-900">{t('progressChart')}</h2>
+              </div>
+              <StudentProgressBarChart data={chartData} levelLabels={levelLabels} />
+            </section>
+          </div>
         )}
 
         <section className="p-6">
@@ -104,34 +119,56 @@ export default async function StudentParentReportPage({ params }: ReportPageProp
             <h2 className="text-xl font-semibold text-gray-900">{t('historyTitle')}</h2>
           </div>
 
-          {report.history.length === 0 ? (
+          {timeline.length === 0 ? (
             <p className="rounded-md border border-gray-200 bg-gray-50 p-4 text-center text-gray-600">
               {t('noHistory')}
             </p>
           ) : (
             <div className="space-y-4">
-              {report.history.map((entry, index) => {
-                const style = getReadingLevelStyle(entry.readingLevel.code)
+              {timeline.map((entry, index) => {
+                const style = entry.type === 'history' ? getReadingLevelStyle(entry.readingLevel.code) : null
                 return (
                   <section key={entry.id} className="rounded-md border border-gray-200 bg-gray-50 p-4">
                     <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                      <span
-                        className="inline-flex w-fit rounded px-2 py-1 text-xs font-semibold"
-                        style={{ backgroundColor: style.backgroundColor, color: style.textColor }}
-                      >
-                        {tLevels(entry.readingLevel.code)}
-                      </span>
+                      {entry.type === 'history' ? (
+                        <span
+                          className="inline-flex w-fit rounded px-2 py-1 text-xs font-semibold"
+                          style={{ backgroundColor: style!.backgroundColor, color: style!.textColor }}
+                        >
+                          {tLevels(entry.readingLevel.code)}
+                        </span>
+                      ) : (
+                        <span className="inline-flex w-fit rounded bg-gray-200 px-2 py-1 text-xs font-semibold text-gray-700">
+                          {locale === 'pt-BR' ? 'Comentário' : 'Commentary'}
+                        </span>
+                      )}
                       <span className="text-sm text-gray-500">{formatDate(entry.recordedAt, locale)}</span>
                     </div>
-                    <p className="mt-2 text-sm text-gray-500">
-                      {t('recordedBy')} <strong>{entry.teacher.name}</strong>
-                    </p>
-                    {entry.notes && (
-                      <p className="mt-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-700">
-                        {entry.notes}
+                    <div className="mt-2 flex items-center gap-2">
+                      <p className="text-sm text-gray-500">
+                        {t('recordedBy')} <strong>{entry.teacher.name}</strong>
                       </p>
+                      {entry.teacher.role && (
+                        <span className="inline-flex rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-600">
+                          {entry.teacher.role === 'Admin' ? (locale === 'pt-BR' ? 'Administrador' : 'Admin') : 
+                           entry.teacher.role === 'Coordinator' ? (locale === 'pt-BR' ? 'Coordenador' : 'Coordinator') :
+                           (locale === 'pt-BR' ? 'Professor' : 'Teacher')}
+                        </span>
+                      )}
+                    </div>
+                    {entry.type === 'history' && entry.notes && (
+                      <div 
+                        className="mt-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-700 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-gray-900 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:text-gray-900 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-gray-900 [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:my-2 [&_p]:my-1"
+                        dangerouslySetInnerHTML={{ __html: entry.notes }}
+                      />
                     )}
-                    {index === 0 && (
+                    {entry.type === 'commentary' && (
+                      <div 
+                        className="mt-3 rounded-md border border-gray-200 bg-white p-3 text-sm text-gray-800 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-gray-900 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:text-gray-900 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-gray-900 [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:my-2 [&_p]:my-1"
+                        dangerouslySetInnerHTML={{ __html: entry.commentary }}
+                      />
+                    )}
+                    {index === 0 && entry.type === 'history' && (
                       <span className="mt-3 inline-flex rounded bg-blue-100 px-2 py-1 text-xs font-medium text-blue-700">
                         {t('currentLevel')}
                       </span>

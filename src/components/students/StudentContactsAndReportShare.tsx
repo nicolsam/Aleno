@@ -202,7 +202,7 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
   }
 
   return (
-    <section className="mb-6 grid gap-6">
+    <section className="mb-6 grid gap-6 lg:grid-cols-[6fr_4fr]">
       <div className="rounded-lg bg-white p-6 shadow">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">

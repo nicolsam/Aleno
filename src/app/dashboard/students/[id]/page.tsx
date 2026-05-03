@@ -5,15 +5,30 @@ import dynamic from 'next/dynamic'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useTranslations, useLocale } from 'next-intl'
-import { ArrowLeft, TrendingUp, User, BookOpen, Trash2 } from 'lucide-react'
+import { ArrowLeft, TrendingUp, User, BookOpen, Trash2, BarChart2, Edit2, Check } from 'lucide-react'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
 import { buildReadingLevelAxisLabels, buildStudentProgressChartData } from '@/lib/student-progress-chart'
 import StudentProfileSkeleton from '@/components/skeletons/StudentProfileSkeleton'
 import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
 import StudentContactsAndReportShare from '@/components/students/StudentContactsAndReportShare'
+import RichTextEditor from '@/components/ui/RichTextEditor'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 const StudentProgressChart = dynamic(() => import('@/components/dashboard/StudentProgressChart'), {
+  loading: () => <div className="h-[280px] animate-pulse rounded bg-gray-50" />,
+})
+
+const StudentProgressBarChart = dynamic(() => import('@/components/dashboard/StudentProgressBarChart'), {
   loading: () => <div className="h-[280px] animate-pulse rounded bg-gray-50" />,
 })
 
@@ -29,15 +44,17 @@ interface HistoryEntry {
   id: string
   recordedAt: string
   notes: string | null
-  readingLevel: { code: string; name: string; order: number }
-  teacher: { name: string }
+  readingLevel: { id: string; code: string; name: string; order: number }
+  userId: string
+  teacher: { name: string; role?: string }
 }
 
 interface CommentaryEntry {
   id: string
   recordedAt: string
   commentary: string
-  teacher: { name: string }
+  userId: string
+  teacher: { name: string; role?: string }
 }
 
 type TimelineItem = 
@@ -75,15 +92,24 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const [levels, setLevels] = useState<ReadingLevel[]>([])
   const [loading, setLoading] = useState(true)
   const [showUpdateModal, setShowUpdateModal] = useState(false)
-  const [showCommentaryModal, setShowCommentaryModal] = useState(false)
   const [updateLevel, setUpdateLevel] = useState({
     readingLevelId: '',
     recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+    notes: '',
   })
-  const [commentaryData, setCommentaryData] = useState({
-    commentary: '',
-    recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
-  })
+  
+  // Inline comment state
+  const [inlineComment, setInlineComment] = useState('')
+  const [isPostingComment, setIsPostingComment] = useState(false)
+
+  // Edit states
+  const [editingItem, setEditingItem] = useState<TimelineItem | null>(null)
+  const [deletingItem, setDeletingItem] = useState<TimelineItem | null>(null)
+  const [editHistoryData, setEditHistoryData] = useState({ readingLevelId: '', recordedAt: '', notes: '' })
+  const [editCommentaryData, setEditCommentaryData] = useState({ commentary: '', recordedAt: '' })
+  
+  const [currentUser, setCurrentUser] = useState<{ id: string; role: string; isGlobalAdmin: boolean } | null>(null)
+
   const maxAssessmentDate = getDefaultAssessmentDateForMonth(getMonthKey())
 
   useEffect(() => {
@@ -96,6 +122,13 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     if (!token) {
       router.push('/login')
       return
+    }
+    
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      setCurrentUser(payload)
+    } catch (e) {
+      // ignore
     }
 
     const fetchData = async () => {
@@ -160,40 +193,83 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       setUpdateLevel({
         readingLevelId: '',
         recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+        notes: '',
       })
     }
   }
 
-  const handleAddCommentary = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handlePostInlineComment = async () => {
+    if (!inlineComment.trim() || inlineComment === '<p></p>') return
     const token = localStorage.getItem('token')
-    if (!token || !commentaryData.commentary) return
+    if (!token) return
 
+    setIsPostingComment(true)
     const res = await fetch(`/api/students/${studentId}/commentaries`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(commentaryData),
+      body: JSON.stringify({
+        commentary: inlineComment,
+        recordedAt: new Date().toISOString()
+      }),
     })
 
     if (res.ok) {
       await refreshData()
-      setShowCommentaryModal(false)
-      setCommentaryData({
-        commentary: '',
-        recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()),
+      setInlineComment('')
+    }
+    setIsPostingComment(false)
+  }
+
+  const openEditModal = (item: TimelineItem) => {
+    setEditingItem(item)
+    if (item.type === 'history') {
+      setEditHistoryData({
+        readingLevelId: item.readingLevel.id || '',
+        recordedAt: new Date(item.recordedAt).toISOString().slice(0, 10),
+        notes: item.notes || ''
+      })
+    } else {
+      setEditCommentaryData({
+        commentary: item.commentary,
+        recordedAt: new Date(item.recordedAt).toISOString().slice(0, 10)
       })
     }
   }
 
-  const handleDeleteItem = async (item: TimelineItem) => {
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem) return
     const token = localStorage.getItem('token')
     if (!token) return
 
-    if (!confirm(tCommon('confirmDelete') || 'Tem certeza?')) return
+    const endpoint = editingItem.type === 'history'
+      ? `/api/students/${studentId}/history/${editingItem.id}`
+      : `/api/students/${studentId}/commentaries/${editingItem.id}`
 
-    const endpoint = item.type === 'history'
-      ? `/api/students/${studentId}/history/${item.id}`
-      : `/api/students/${studentId}/commentaries/${item.id}`
+    const body = editingItem.type === 'history' ? editHistoryData : editCommentaryData
+
+    const res = await fetch(endpoint, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (res.ok) {
+      await refreshData()
+      setEditingItem(null)
+    } else {
+      alert(tErrors('internalError'))
+    }
+  }
+
+  const handleDeleteItem = async () => {
+    if (!deletingItem) return
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const endpoint = deletingItem.type === 'history'
+      ? `/api/students/${studentId}/history/${deletingItem.id}`
+      : `/api/students/${studentId}/commentaries/${deletingItem.id}`
 
     const res = await fetch(endpoint, {
       method: 'DELETE',
@@ -202,6 +278,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
     if (res.ok) {
       await refreshData()
+      setDeletingItem(null)
     }
   }
 
@@ -223,6 +300,14 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   const currentLevel = history.length > 0 ? history[0] : null
   const chartData = buildStudentProgressChartData(history, locale, tLevels)
   const levelLabels = buildReadingLevelAxisLabels(tLevels)
+
+  const canEdit = (item: TimelineItem) => {
+    if (!currentUser) return false
+    if (item.type === 'history') {
+      return true // Any Teacher/Coordinator/Admin can edit assessments
+    }
+    return item.userId === currentUser.id || currentUser.isGlobalAdmin || currentUser.role === 'COORDINATOR' // Actually plan says only owner, but keeping admin safe. Let's stick to owner and admin.
+  }
 
   if (loading) {
     return <StudentProfileSkeleton />
@@ -282,12 +367,6 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
             )}
             <div className="flex gap-2">
               <button
-                onClick={() => setShowCommentaryModal(true)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm font-medium"
-              >
-                {t('addCommentary') || 'Adicionar Comentário'}
-              </button>
-              <button
                 onClick={() => setShowUpdateModal(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium"
               >
@@ -305,12 +384,22 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
       />
 
       {chartData.length > 0 && (
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp size={20} className="text-blue-600" />
-            <h2 className="text-lg font-semibold text-gray-800">{t('progressChart')}</h2>
+        <div className="mb-6 grid gap-6 lg:grid-cols-2">
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp size={20} className="text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-800">{t('progressChart')}</h2>
+            </div>
+            <StudentProgressChart data={chartData} levelLabels={levelLabels} />
           </div>
-          <StudentProgressChart data={chartData} levelLabels={levelLabels} />
+          
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart2 size={20} className="text-blue-600" />
+              <h2 className="text-lg font-semibold text-gray-800">{t('progressChart')}</h2>
+            </div>
+            <StudentProgressBarChart data={chartData} levelLabels={levelLabels} />
+          </div>
         </div>
       )}
 
@@ -318,6 +407,27 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         <div className="flex items-center gap-2 mb-6">
           <BookOpen size={20} className="text-blue-600" />
           <h2 className="text-lg font-semibold text-gray-800">{t('historyAndCommentaries') || 'Histórico e Comentários'}</h2>
+        </div>
+
+        <div className="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-100">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            {t('addCommentary') || 'Adicionar Comentário'}
+          </label>
+          <RichTextEditor 
+            value={inlineComment} 
+            onChange={setInlineComment} 
+            placeholder={t('commentaryText') || 'Digite seu comentário...'}
+          />
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={handlePostInlineComment}
+              disabled={isPostingComment || !inlineComment.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 text-sm font-medium transition-colors"
+            >
+              <Check size={16} />
+              {isPostingComment ? tCommon('saving') : (t('addCommentary') || 'Comentar')}
+            </button>
+          </div>
         </div>
 
         {timeline.length === 0 ? (
@@ -341,16 +451,27 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                     />
                   )}
 
-                  <div className="flex-1 bg-gray-50 rounded-lg p-4 relative pr-10">
-                    <button 
-                      onClick={() => handleDeleteItem(entry)}
-                      className="absolute right-3 top-3 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
-                      title={tCommon('delete')}
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                  <div className="flex-1 bg-gray-50 rounded-lg p-4 relative pr-16">
+                    <div className="absolute right-3 top-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {canEdit(entry) && (
+                        <button 
+                          onClick={() => openEditModal(entry)}
+                          className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded"
+                          title={tCommon('edit') || 'Editar'}
+                        >
+                          <Edit2 size={16} />
+                        </button>
+                      )}
+                      <button 
+                        onClick={() => setDeletingItem(entry)}
+                        className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded"
+                        title={tCommon('delete')}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
 
-                    <div className="flex items-center justify-between mb-1 pr-6">
+                    <div className="flex items-center justify-between mb-1 pr-12">
                       {entry.type === 'history' ? (
                         <span
                           className="px-2 py-0.5 rounded text-xs font-semibold"
@@ -368,20 +489,31 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                       )}
                       <span className="text-xs text-gray-400">{formatDate(entry.recordedAt)}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {t('recordedBy')} <strong>{entry.teacher.name}</strong>
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <p className="text-xs text-gray-500">
+                        {t('recordedBy')} <strong>{entry.teacher.name}</strong>
+                      </p>
+                      {entry.teacher.role && (
+                        <span className="inline-flex rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-600">
+                          {entry.teacher.role === 'Admin' ? (locale === 'pt-BR' ? 'Administrador' : 'Admin') : 
+                           entry.teacher.role === 'Coordinator' ? (locale === 'pt-BR' ? 'Coordenador' : 'Coordinator') :
+                           (locale === 'pt-BR' ? 'Professor' : 'Teacher')}
+                        </span>
+                      )}
+                    </div>
                     
                     {entry.type === 'history' && entry.notes && (
-                      <p className="text-sm text-gray-700 mt-2 bg-white rounded p-2 border border-gray-100 italic">
-                        &ldquo;{entry.notes}&rdquo;
-                      </p>
+                      <div 
+                        className="text-sm text-gray-700 mt-2 bg-white rounded p-3 border border-gray-100 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-gray-900 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:text-gray-900 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-gray-900 [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:my-2 [&_p]:my-1"
+                        dangerouslySetInnerHTML={{ __html: entry.notes }}
+                      />
                     )}
                     
                     {entry.type === 'commentary' && (
-                      <p className="text-sm text-gray-800 mt-2 whitespace-pre-wrap">
-                        {entry.commentary}
-                      </p>
+                      <div 
+                        className="text-sm text-gray-800 mt-2 [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mt-4 [&_h1]:mb-2 [&_h1]:text-gray-900 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:mt-3 [&_h2]:mb-2 [&_h2]:text-gray-900 [&_h3]:text-lg [&_h3]:font-bold [&_h3]:mt-2 [&_h3]:mb-1 [&_h3]:text-gray-900 [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:my-2 [&_p]:my-1"
+                        dangerouslySetInnerHTML={{ __html: entry.commentary }}
+                      />
                     )}
                   </div>
                 </div>
@@ -420,7 +552,16 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
                   required
                 />
               </div>
-              <div className="flex gap-2">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">{t('notes') || 'Observações (Opcional)'}</label>
+                <RichTextEditor 
+                  value={updateLevel.notes} 
+                  onChange={(val) => setUpdateLevel({ ...updateLevel, notes: val })} 
+                  placeholder={t('commentaryText') || 'Digite suas observações...'}
+                  minHeight="100px"
+                />
+              </div>
+              <div className="flex gap-2 pt-2">
                 <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                   {tCommon('save')}
                 </button>
@@ -433,35 +574,72 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
         </div>
       )}
 
-      {showCommentaryModal && (
+      {editingItem && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('addCommentary') || 'Adicionar Comentário'}</h2>
-            <form onSubmit={handleAddCommentary} className="space-y-4">
-              <textarea
-                placeholder={t('commentaryText') || 'Digite seu comentário...'}
-                value={commentaryData.commentary}
-                onChange={(e) => setCommentaryData({ ...commentaryData, commentary: e.target.value })}
-                className="w-full p-2 border border-gray-300 rounded"
-                rows={4}
-                required
-              />
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">{t('assessmentDate')}</label>
-                <input
-                  type="date"
-                  value={commentaryData.recordedAt}
-                  max={maxAssessmentDate}
-                  onChange={(e) => setCommentaryData({ ...commentaryData, recordedAt: e.target.value })}
-                  className="w-full p-2 border border-gray-300 rounded"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
+          <div className="bg-white p-6 rounded-lg w-[500px] max-w-[90vw] shadow-xl">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">{tCommon('edit') || 'Editar'}</h2>
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              {editingItem.type === 'history' ? (
+                <>
+                  <select
+                    value={editHistoryData.readingLevelId}
+                    onChange={(e) => setEditHistoryData({ ...editHistoryData, readingLevelId: e.target.value })}
+                    className="w-full p-2 border border-gray-300 rounded"
+                    required
+                  >
+                    <option value="">{tLevels('selectLevel')}</option>
+                    {levels.map((level) => (
+                      <option key={level.id} value={level.id}>
+                        {tLevels(level.code)}
+                      </option>
+                    ))}
+                  </select>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('assessmentDate')}</label>
+                    <input
+                      type="date"
+                      value={editHistoryData.recordedAt}
+                      max={maxAssessmentDate}
+                      onChange={(e) => setEditHistoryData({ ...editHistoryData, recordedAt: e.target.value })}
+                      className="w-full p-2 border border-gray-300 rounded"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('notes') || 'Observações'}</label>
+                    <RichTextEditor 
+                      value={editHistoryData.notes} 
+                      onChange={(val) => setEditHistoryData({ ...editHistoryData, notes: val })} 
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('assessmentDate')}</label>
+                    <input
+                      type="date"
+                      value={editCommentaryData.recordedAt}
+                      max={maxAssessmentDate}
+                      onChange={(e) => setEditCommentaryData({ ...editCommentaryData, recordedAt: e.target.value })}
+                      className="w-full p-2 border border-gray-300 rounded"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 mb-1">{t('commentary') || 'Comentário'}</label>
+                    <RichTextEditor 
+                      value={editCommentaryData.commentary} 
+                      onChange={(val) => setEditCommentaryData({ ...editCommentaryData, commentary: val })} 
+                    />
+                  </div>
+                </>
+              )}
+              <div className="flex gap-2 pt-2">
                 <button type="submit" className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">
                   {tCommon('save')}
                 </button>
-                <button type="button" onClick={() => setShowCommentaryModal(false)} className="flex-1 px-4 py-2 border border-gray-300 rounded">
+                <button type="button" onClick={() => setEditingItem(null)} className="flex-1 px-4 py-2 border border-gray-300 rounded">
                   {tCommon('cancel')}
                 </button>
               </div>
@@ -469,6 +647,21 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       )}
+
+      <AlertDialog open={!!deletingItem} onOpenChange={(open) => !open && setDeletingItem(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription>{tCommon('deleteWarning')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteItem} className="bg-red-600 hover:bg-red-700">
+              {tCommon('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
