@@ -10,6 +10,7 @@ import DashboardSkeleton from '@/components/skeletons/DashboardSkeleton'
 import ChartSkeleton from '@/components/dashboard/ChartSkeleton'
 import { buildDashboardActionListHref } from '@/lib/dashboard-action-lists'
 import { ACADEMIC_YEARS } from '@/lib/academic-years'
+import { getSectionOptionsForGrade, resolveSectionFilter } from '@/lib/class-filters'
 import { cachedJson } from '@/lib/client-get-cache'
 import {
   buildMonthKey,
@@ -33,6 +34,9 @@ import {
 const DashboardCharts = dynamic(() => import('@/components/dashboard/DashboardCharts'), {
   loading: () => <ChartSkeleton />,
 })
+
+const VALID_SHIFTS = ['Morning', 'Afternoon', 'Night']
+const VALID_GRADES = ['1º Ano', '2º Ano', '3º Ano', '4º Ano', '5º Ano', '6º Ano', '7º Ano', '8º Ano', '9º Ano', '1ª Série', '2ª Série', '3ª Série']
 
 interface Stats {
   totalStudents: number
@@ -65,11 +69,29 @@ export default function DashboardPage() {
   const t = useTranslations()
   const [stats, setStats] = useState<Stats | null>(null)
   const [schools, setSchools] = useState<{ id: string; name: string }[]>([])
+  const [classes, setClasses] = useState<{ id: string; grade: string; section: string; shift: string }[]>([])
   const [schoolId, setSchoolId] = useState('')
   const [selectedMonth, setSelectedMonth] = useState(getMonthKey())
   const [selectedYear, setSelectedYear] = useState(String(getYearFromMonthKey(getMonthKey())))
   const [availableAcademicYears, setAvailableAcademicYears] = useState<number[]>(ACADEMIC_YEARS)
   const [loading, setLoading] = useState(true)
+
+  const [gradeFilter, setGradeFilter] = useState('')
+  const [sectionFilter, setSectionFilter] = useState('')
+  const [shiftFilter, setShiftFilter] = useState('')
+  const sectionOptions = getSectionOptionsForGrade(classes, gradeFilter)
+
+  const handleGradeFilterChange = (value: string) => {
+    const nextGrade = value === '__all__' ? '' : value
+    const nextSectionOptions = getSectionOptionsForGrade(classes, nextGrade)
+
+    setGradeFilter(nextGrade)
+    setSectionFilter((currentSection) => resolveSectionFilter(currentSection, nextSectionOptions))
+  }
+
+  const handleSectionFilterChange = (value: string) => {
+    setSectionFilter(value === '__all__' ? '' : value)
+  }
 
   const selectedMonthPart = getMonthPartFromMonthKey(selectedMonth)
   const selectedAcademicYear = Number(selectedYear)
@@ -125,13 +147,16 @@ export default function DashboardPage() {
 
       const dashboardParams = new URLSearchParams({ month: selectedMonth })
       if (schoolId) dashboardParams.set('schoolId', schoolId)
+      if (gradeFilter) dashboardParams.set('grade', gradeFilter)
+      if (sectionFilter) dashboardParams.set('section', sectionFilter)
+      if (shiftFilter) dashboardParams.set('shift', shiftFilter)
       const dashboardUrl = `/api/dashboard?${dashboardParams.toString()}`
 
       const [schoolsRes, classesRes, dashboardRes] = await Promise.all([
         cachedJson<{ schools?: { id: string; name: string }[] }>('/api/schools', {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        cachedJson<{ academicYears?: number[] }>(classUrl, {
+        cachedJson<{ classes?: { id: string; grade: string; section: string; shift: string }[]; academicYears?: number[] }>(classUrl, {
           headers: { Authorization: `Bearer ${token}` },
         }),
         cachedJson<Stats>(dashboardUrl, {
@@ -144,6 +169,11 @@ export default function DashboardPage() {
       }
 
       if (classesRes.ok) {
+        const fetchedClasses = classesRes.data.classes || []
+        setClasses(fetchedClasses)
+        setSectionFilter((currentSection) => (
+          resolveSectionFilter(currentSection, getSectionOptionsForGrade(fetchedClasses, gradeFilter))
+        ))
         const years = classesRes.data.academicYears?.length ? classesRes.data.academicYears : ACADEMIC_YEARS
         setAvailableAcademicYears(years)
 
@@ -166,7 +196,7 @@ export default function DashboardPage() {
       setLoading(false)
     }
     fetchStats()
-  }, [schoolId, selectedMonth, selectedAcademicYear, selectedMonthPart])
+  }, [schoolId, gradeFilter, sectionFilter, shiftFilter, selectedMonth, selectedAcademicYear, selectedMonthPart])
 
   if (loading) {
     return <DashboardSkeleton />
@@ -189,7 +219,7 @@ export default function DashboardPage() {
 
       <div className="mb-6 bg-white p-4 rounded-lg shadow">
         <div className="grid gap-4 md:flex md:flex-wrap md:items-end">
-          <div className="space-y-1 md:w-56">
+          <div className="space-y-1 md:min-w-56 md:flex-1">
             <Label className="text-gray-700">{t('classes.school')}</Label>
             <Select value={schoolId || '__all__'} onValueChange={handleSchoolFilterChange}>
               <SelectTrigger className="w-full">
@@ -205,6 +235,48 @@ export default function DashboardPage() {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-1 md:w-56">
+            <Label className="text-gray-700">{t('classes.grade')}</Label>
+            <Select value={gradeFilter || '__all__'} onValueChange={handleGradeFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('classes.all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('classes.all')}</SelectItem>
+                {VALID_GRADES.map(g => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-28">
+            <Label className="text-gray-700">{t('classes.section')}</Label>
+            <Select value={sectionFilter || '__all__'} onValueChange={handleSectionFilterChange}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('classes.all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('classes.all')}</SelectItem>
+                {sectionOptions.map((section) => (
+                  <SelectItem key={section} value={section}>
+                    {section}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1 md:w-44">
+            <Label className="text-gray-700">{t('classes.shift')}</Label>
+            <Select value={shiftFilter} onValueChange={(value) => setShiftFilter(value === '__all__' ? '' : value)}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('classes.all')} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t('classes.all')}</SelectItem>
+                {VALID_SHIFTS.map(s => <SelectItem key={s} value={s}>{t(`classes.shifts.${s}`)}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+        <div className="grid gap-4 border-t pt-4 mt-4 md:flex md:flex-wrap md:items-end">
           <div className="space-y-1 md:w-28">
             <Label className="text-gray-700">{t('dashboard.monthFilter')}</Label>
             <Select value={selectedMonthPart} onValueChange={handleMonthPartChange}>

@@ -50,9 +50,9 @@ export default function DashboardCharts({
         <h3 className="mb-4 text-lg font-semibold text-gray-800">{byLevelTitle}</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={distribution} layout="vertical">
-            <XAxis type="number" />
+            <XAxis type="number" allowDecimals={false} />
             <YAxis type="category" dataKey="translatedName" width={120} />
-            <Tooltip />
+            <Tooltip formatter={(value: any) => [value, studentLabel]} />
             <Legend />
             <Bar dataKey="count" fill="#3B82F6" name={studentLabel} />
           </BarChart>

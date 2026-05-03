@@ -16,6 +16,9 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url)
     const schoolId = searchParams.get('schoolId')
+    const grade = searchParams.get('grade')
+    const section = searchParams.get('section')
+    const shift = searchParams.get('shift')
     const { month: selectedMonth, monthStatus, range: selectedMonthRange } = resolveMonthInfo(searchParams.get('month'))
     const selectedAcademicYear = getYearFromMonthKey(selectedMonth)
 
@@ -51,6 +54,9 @@ export async function GET(request: Request) {
               academicYear: selectedAcademicYear,
               schoolId: { in: schoolIds },
               deletedAt: null,
+              ...(grade ? { grade } : {}),
+              ...(section ? { section } : {}),
+              ...(shift ? { shift } : {}),
             },
           },
         },
@@ -63,6 +69,9 @@ export async function GET(request: Request) {
               academicYear: selectedAcademicYear,
               schoolId: { in: schoolIds },
               deletedAt: null,
+              ...(grade ? { grade } : {}),
+              ...(section ? { section } : {}),
+              ...(shift ? { shift } : {}),
             },
           },
           include: { class: { include: { school: true } } },
