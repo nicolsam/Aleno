@@ -27,9 +27,10 @@ describe('student report links', () => {
     const shareText = buildStudentReportShareText('Ana', 'Escola Teste', 'https://app.test/reports/students/token')
     const url = buildWhatsappShareUrl(shareText, '5585999990000')
 
-    expect(shareText).toContain('Ana')
-    expect(url).toBe(
-      'https://wa.me/5585999990000?text=Relatorio%20de%20leitura%20de%20Ana%20-%20Escola%20Teste%3A%20https%3A%2F%2Fapp.test%2Freports%2Fstudents%2Ftoken'
-    )
+    expect(shareText).toContain('Aluno: Ana')
+    expect(shareText).toContain('Escola: Escola Teste')
+    expect(shareText.split('\n').at(-1)).toBe('https://app.test/reports/students/token')
+    expect(decodeURIComponent(url)).toContain('https://app.test/reports/students/token')
+    expect(url).toContain('https://wa.me/5585999990000?text=')
   })
 })

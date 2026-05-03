@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatBrazilPhoneInput,
+  getBrazilPhoneInputDigits,
   normalizeBrazilWhatsappPhone,
   normalizeStudentContactInput,
   normalizeStudentContactInputs,
@@ -13,6 +15,17 @@ describe('student contacts', () => {
 
   it('keeps Brazilian numbers that already include country code', () => {
     expect(normalizeBrazilWhatsappPhone('+55 85 99999-0000')).toBe('5585999990000')
+  })
+
+  it('formats Brazilian phone input masks for landlines and mobile numbers', () => {
+    expect(formatBrazilPhoneInput('8533334444')).toBe('(85) 3333-4444')
+    expect(formatBrazilPhoneInput('85999990000')).toBe('(85) 99999-0000')
+  })
+
+  it('strips non-digits, removes pasted country code, and truncates overlong input', () => {
+    expect(getBrazilPhoneInputDigits('+55 (85) 99999-0000')).toBe('85999990000')
+    expect(formatBrazilPhoneInput('abc85.99999-0000xyz')).toBe('(85) 99999-0000')
+    expect(getBrazilPhoneInputDigits('859999900001234')).toBe('85999990000')
   })
 
   it('includes the offending value when phone validation fails', () => {

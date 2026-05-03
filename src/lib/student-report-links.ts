@@ -20,5 +20,13 @@ export function buildStudentReportUrl(request: Request, token: string): string {
 }
 
 export function buildStudentReportShareText(studentName: string, schoolName: string, reportUrl: string): string {
-  return `Relatorio de leitura de ${studentName} - ${schoolName}: ${reportUrl}`
+  return [
+    'Ola! Compartilho o relatorio de leitura do estudante.',
+    '',
+    `Aluno: ${studentName}`,
+    `Escola: ${schoolName}`,
+    '',
+    'Abra o link abaixo para acompanhar o progresso:',
+    reportUrl,
+  ].join('\n')
 }

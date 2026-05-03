@@ -5,7 +5,11 @@ import { Copy, MessageCircle, Phone, Plus, Star, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 import { buildWhatsappShareUrl } from '@/lib/whatsapp'
-import { STUDENT_CONTACT_RELATIONSHIPS, type StudentContactRelationship } from '@/lib/student-contacts'
+import {
+  formatBrazilPhoneInput,
+  STUDENT_CONTACT_RELATIONSHIPS,
+  type StudentContactRelationship,
+} from '@/lib/student-contacts'
 import {
   Select,
   SelectContent,
@@ -239,9 +243,11 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
             </Select>
           </div>
           <input
+            type="tel"
+            inputMode="numeric"
             value={contactForm.phone}
-            onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })}
-            placeholder={t('contactPhone')}
+            onChange={(event) => setContactForm({ ...contactForm, phone: formatBrazilPhoneInput(event.target.value) })}
+            placeholder={t('contactPhonePlaceholder')}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             required
           />

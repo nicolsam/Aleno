@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import {
+  formatBrazilPhoneInput,
   STUDENT_CONTACT_RELATIONSHIPS,
   type StudentContactRelationship,
 } from '@/lib/student-contacts'
@@ -239,9 +240,11 @@ export default function StudentRegistrationModal({ classes, formatClassName, onC
                 </Select>
               </div>
               <Input
+                type="tel"
+                inputMode="numeric"
                 value={contactDraft.phone}
-                onChange={(event) => setContactDraft({ ...contactDraft, phone: event.target.value })}
-                placeholder={t('contactPhone')}
+                onChange={(event) => setContactDraft({ ...contactDraft, phone: formatBrazilPhoneInput(event.target.value) })}
+                placeholder={t('contactPhonePlaceholder')}
                 className="mt-3"
               />
               <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">

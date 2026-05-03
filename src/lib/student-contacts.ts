@@ -32,8 +32,32 @@ export function isStudentContactRelationship(value: unknown): value is StudentCo
   return typeof value === 'string' && STUDENT_CONTACT_RELATIONSHIPS.includes(value as StudentContactRelationship)
 }
 
+export function getDigitsOnly(value: string): string {
+  return value.replace(/\D/g, '')
+}
+
+export function getBrazilPhoneInputDigits(value: string): string {
+  let digits = getDigitsOnly(value)
+
+  if (digits.startsWith(BRAZIL_COUNTRY_CODE) && digits.length >= 12) {
+    digits = digits.slice(BRAZIL_COUNTRY_CODE.length)
+  }
+
+  return digits.slice(0, 11)
+}
+
+export function formatBrazilPhoneInput(value: string): string {
+  const digits = getBrazilPhoneInputDigits(value)
+  if (digits.length === 0) return ''
+  if (digits.length <= 2) return `(${digits}`
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`
+  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`
+
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`
+}
+
 export function normalizeBrazilWhatsappPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '')
+  const digits = getDigitsOnly(phone)
   const isLocalNumber = digits.length === 10 || digits.length === 11
   const isBrazilNumber = digits.startsWith(BRAZIL_COUNTRY_CODE) && (digits.length === 12 || digits.length === 13)
 

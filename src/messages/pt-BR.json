@@ -92,6 +92,7 @@
       "OTHER": "Outro"
     },
     "contactPhone": "WhatsApp",
+    "contactPhonePlaceholder": "(85) 99999-0000",
     "primaryContact": "Contato principal",
     "addContact": "Adicionar contato",
     "contactCreated": "Contato salvo",

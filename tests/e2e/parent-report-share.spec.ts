@@ -107,7 +107,9 @@ test.describe('parent report sharing', () => {
     await page.getByPlaceholder(/Nome do contato|Contact name/).fill('Maria Parent')
     await page.getByText(/Parentesco|Relationship/).click()
     await page.getByRole('option', { name: /Mãe|Mother/ }).click()
-    await page.getByPlaceholder(/WhatsApp/).fill('(85) 99999-0000')
+    const detailWhatsappInput = page.getByPlaceholder('(85) 99999-0000')
+    await detailWhatsappInput.fill('85999990000')
+    await expect(detailWhatsappInput).toHaveValue('(85) 99999-0000')
     await page.getByRole('button', { name: /Adicionar contato|Add contact/ }).click()
     await expect(page.locator('p').filter({ hasText: 'Maria Parent' })).toBeVisible()
 
@@ -119,6 +121,7 @@ test.describe('parent report sharing', () => {
     await page.getByRole('button', { name: /Enviar no WhatsApp|Share on WhatsApp/ }).click()
     const popup = await popupPromise
     expect(popup.url()).toContain('phone=5585999990000')
+    expect(decodeURIComponent(popup.url())).toContain(reportLink || '')
     await popup.close()
 
     const reportPath = new URL(reportLink || '').pathname
@@ -142,7 +145,9 @@ test.describe('parent report sharing', () => {
     await page.getByPlaceholder(/Nome do contato|Contact name/).fill('Created Parent')
     await page.getByText(/Parentesco|Relationship/).click()
     await page.getByRole('option', { name: /Mãe|Mother/ }).click()
-    await page.getByPlaceholder(/WhatsApp/).fill('(85) 98888-7777')
+    const registrationWhatsappInput = page.getByPlaceholder('(85) 99999-0000')
+    await registrationWhatsappInput.fill('85988887777')
+    await expect(registrationWhatsappInput).toHaveValue('(85) 98888-7777')
     await page.getByRole('button', { name: /Adicionar contato|Add contact/ }).click()
     await page.getByRole('button', { name: /^(Avançar|Next)$/ }).click()
     await page.getByRole('button', { name: /Salvar|Save/ }).click()
