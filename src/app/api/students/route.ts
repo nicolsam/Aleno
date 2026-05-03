@@ -4,6 +4,7 @@ import { prisma } from '@/lib/db'
 import { logAction } from '@/lib/audit'
 import { getAcademicYearStartDate, parseAcademicYear } from '@/lib/enrollments'
 import { forbiddenResponse, getAccessibleSchoolIds, isAuthFailure, isCoordinatorForSchool, requireAuth } from '@/lib/permissions'
+import { normalizeStudentContactInputs } from '@/lib/student-contacts'
 import {
   getLatestAssessmentDate,
   getYearFromMonthKey,
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
     const auth = await requireAuth(request)
     if (isAuthFailure(auth)) return auth.error
 
-    const { name, studentNumber, classId } = await request.json()
+    const { name, studentNumber, classId, contacts } = await request.json()
 
     if (!name || !studentNumber || !classId) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
@@ -119,32 +120,47 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Student number exists' }, { status: 400 })
     }
 
-    const student = await prisma.student.create({
-      data: {
-        name,
-        studentNumber,
-        schoolId: classRecord.schoolId,
-        classId,
-        enrollments: {
-          create: {
-            classId,
-            startedAt: getAcademicYearStartDate(classRecord.academicYear),
+    const normalizedContacts = normalizeStudentContactInputs(contacts)
+    const student = await prisma.$transaction(async (transaction) => transaction.student.create({
+        data: {
+          name,
+          studentNumber,
+          schoolId: classRecord.schoolId,
+          classId,
+          enrollments: {
+            create: {
+              classId,
+              startedAt: getAcademicYearStartDate(classRecord.academicYear),
+            },
+          },
+          contacts: normalizedContacts.length > 0 ? {
+            create: normalizedContacts.map((contact) => ({
+              name: contact.name,
+              relationship: contact.relationship,
+              phone: contact.phone,
+              whatsappPhone: contact.whatsappPhone,
+              isPrimary: contact.isPrimary,
+            })),
+          } : undefined,
+        },
+        include: {
+          class: true,
+          contacts: true,
+          enrollments: {
+            include: { class: true },
           },
         },
-      },
-      include: {
-        class: true,
-        enrollments: {
-          include: { class: true },
-        },
-      }
-    })
+      }))
 
     const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'Unknown'
     await logAction(auth.user.id, 'CREATE_STUDENT', { studentId: student.id, name }, ipAddress)
 
     return NextResponse.json({ student })
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Invalid')) {
+      return NextResponse.json({ error: error.message }, { status: 400 })
+    }
+
     console.error('Create student error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }

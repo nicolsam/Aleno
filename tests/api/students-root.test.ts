@@ -9,6 +9,7 @@ const {
   mockFindClass,
   mockFindStudent,
   mockCreateStudent,
+  mockTransaction,
   mockLogAction,
 } = vi.hoisted(() => ({
   mockVerifyToken: vi.fn(),
@@ -19,6 +20,7 @@ const {
   mockFindClass: vi.fn(),
   mockFindStudent: vi.fn(),
   mockCreateStudent: vi.fn(),
+  mockTransaction: vi.fn(),
   mockLogAction: vi.fn(),
 }))
 
@@ -43,6 +45,7 @@ vi.mock('@/lib/db', () => ({
       create: mockCreateStudent,
     },
     class: { findUnique: mockFindClass },
+    $transaction: mockTransaction,
   },
 }))
 
@@ -73,6 +76,7 @@ describe('API: /api/students', () => {
     })
     mockFindUserSchools.mockResolvedValue([{ schoolId: 'school-1' }])
     mockFindUserSchool.mockResolvedValue({ userId: 'teacher-1', schoolId: 'school-1' })
+    mockTransaction.mockImplementation(async (callback) => callback({ student: { create: mockCreateStudent } }))
     mockLogAction.mockResolvedValue(undefined)
   })
 
@@ -198,9 +202,11 @@ describe('API: /api/students', () => {
             startedAt: new Date(2026, 0, 1),
           },
         },
+        contacts: undefined,
       },
       include: {
         class: true,
+        contacts: true,
         enrollments: {
           include: { class: true },
         },
@@ -212,6 +218,90 @@ describe('API: /api/students', () => {
       { studentId: 'student-1', name: 'Student 1' },
       '127.0.0.1'
     )
+  })
+
+  it('POST creates a student with normalized parent contacts', async () => {
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 })
+    mockFindStudent.mockResolvedValue(null)
+    mockCreateStudent.mockResolvedValue({
+      id: 'student-1',
+      name: 'Student 1',
+      classId: 'class-1',
+      contacts: [{ id: 'contact-1', isPrimary: true }],
+    })
+
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+      studentNumber: '123',
+      classId: 'class-1',
+      contacts: [
+        { name: 'Maria', relationship: 'MOTHER', phone: '(85) 99999-0000' },
+        { name: 'Jose', relationship: 'FATHER', phone: '(85) 3333-4444' },
+      ],
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(data.student.id).toBe('student-1')
+    expect(mockCreateStudent).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({
+        contacts: {
+          create: [
+            {
+              name: 'Maria',
+              relationship: 'MOTHER',
+              phone: '(85) 99999-0000',
+              whatsappPhone: '5585999990000',
+              isPrimary: true,
+            },
+            {
+              name: 'Jose',
+              relationship: 'FATHER',
+              phone: '(85) 3333-4444',
+              whatsappPhone: '558533334444',
+              isPrimary: false,
+            },
+          ],
+        },
+      }),
+    }))
+  })
+
+  it('POST rejects invalid parent contacts', async () => {
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 })
+    mockFindStudent.mockResolvedValue(null)
+
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+      studentNumber: '123',
+      classId: 'class-1',
+      contacts: [{ name: 'Maria', relationship: '', phone: '(85) 99999-0000' }],
+    }))
+    const data = await response.json()
+
+    expect(response.status).toBe(400)
+    expect(data.error).toContain('Invalid contact relationship')
+    expect(mockCreateStudent).not.toHaveBeenCalled()
+  })
+
+  it('POST rejects contact creation for non-coordinator teachers', async () => {
+    mockFindClass.mockResolvedValue({ id: 'class-1', schoolId: 'school-1', academicYear: 2026 })
+    mockFindUser.mockResolvedValue({
+      id: 'teacher-1',
+      email: 'teacher@test.com',
+      isGlobalAdmin: false,
+      schools: [{ schoolId: 'school-1', role: 'TEACHER' }],
+    })
+
+    const response = await POST(createRequest('http://localhost/api/students', {
+      name: 'Student 1',
+      studentNumber: '123',
+      classId: 'class-1',
+      contacts: [{ name: 'Maria', relationship: 'MOTHER', phone: '(85) 99999-0000' }],
+    }))
+
+    expect(response.status).toBe(403)
+    expect(mockCreateStudent).not.toHaveBeenCalled()
   })
 
   it('POST rejects missing required fields', async () => {

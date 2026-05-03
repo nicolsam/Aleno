@@ -8,8 +8,10 @@ import { useTranslations, useLocale } from 'next-intl'
 import { ArrowLeft, TrendingUp, User, BookOpen } from 'lucide-react'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
+import { buildReadingLevelAxisLabels, buildStudentProgressChartData } from '@/lib/student-progress-chart'
 import StudentProfileSkeleton from '@/components/skeletons/StudentProfileSkeleton'
 import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
+import StudentContactsAndReportShare from '@/components/students/StudentContactsAndReportShare'
 
 const StudentProgressChart = dynamic(() => import('@/components/dashboard/StudentProgressChart'), {
   loading: () => <div className="h-[280px] animate-pulse rounded bg-gray-50" />,
@@ -149,27 +151,8 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
   const currentLevel = history.length > 0 ? history[0] : null
 
-  // Chart data: reverse history so it goes chronologically left-to-right
-  const chartData = [...history].reverse().map(entry => ({
-    date: new Date(entry.recordedAt).toLocaleDateString(locale === 'pt-BR' ? 'pt-BR' : 'en-US', {
-      day: '2-digit',
-      month: 'short',
-    }),
-    level: entry.readingLevel.order,
-    levelName: tLevels(entry.readingLevel.code),
-    notes: entry.notes,
-  }))
-
-  // Y-axis tick formatter: map order numbers to level codes
-  const levelLabels: Record<number, string> = {
-    1: tLevels('DNI'),
-    2: tLevels('LO'),
-    3: tLevels('SO'),
-    4: tLevels('RW'),
-    5: tLevels('RS'),
-    6: tLevels('RTS'),
-    7: tLevels('RTF'),
-  }
+  const chartData = buildStudentProgressChartData(history, locale, tLevels)
+  const levelLabels = buildReadingLevelAxisLabels(tLevels)
 
   if (loading) {
     return <StudentProfileSkeleton />
@@ -238,6 +221,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
+
+      <StudentContactsAndReportShare
+        studentId={student.id}
+        studentName={student.name}
+        schoolName={student.school.name}
+      />
 
       {/* Progress Chart */}
       {chartData.length > 0 && (
