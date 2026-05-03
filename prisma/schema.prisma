@@ -58,6 +58,7 @@ model User {
   auditLogs          AuditLog[]
   createdInvites     UserInvite[]              @relation("InviteCreator")
   createdReportLinks StudentParentReportLink[]
+  commentaries       StudentCommentary[]
 
   @@map("users")
 }
@@ -140,6 +141,7 @@ model Student {
   readingHistory    StudentReadingHistory[]
   contacts          StudentContact[]
   parentReportLinks StudentParentReportLink[]
+  commentaries      StudentCommentary[]
 
   @@unique([studentNumber, schoolId])
   @@map("students")
@@ -227,4 +229,20 @@ model StudentParentReportLink {
   @@index([studentId])
   @@index([expiresAt])
   @@map("student_parent_report_links")
+}
+
+model StudentCommentary {
+  id         String   @id @default(uuid())
+  studentId  String   @map("student_id")
+  userId     String   @map("user_id")
+  commentary String   @db.Text
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([studentId])
+  @@map("student_commentaries")
 }

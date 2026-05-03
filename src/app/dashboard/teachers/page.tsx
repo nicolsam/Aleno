@@ -86,6 +86,7 @@ export default function TeachersPage() {
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null)
   const [editForm, setEditForm] = useState({ name: '', email: '' })
   const [pendingUnassign, setPendingUnassign] = useState<PendingUnassign | null>(null)
+  const [pendingDeleteInvite, setPendingDeleteInvite] = useState<PendingInvite | null>(null)
 
   const isGlobalAdmin = Boolean(user?.isGlobalAdmin)
   const activeTeacherRows: ActiveTeacherRow[] = users.flatMap((managedUser) => (
@@ -254,6 +255,28 @@ export default function TeachersPage() {
     clearClientGetCache('/api/users')
     setUsers((current) => current.filter((currentUser) => currentUser.id !== managedUser.id))
     toast.success(t('unassigned'))
+  }
+
+  const handleDeleteInvite = async () => {
+    const token = localStorage.getItem('token')
+    if (!token || !pendingDeleteInvite) return
+
+    const { id } = pendingDeleteInvite
+    setPendingDeleteInvite(null)
+
+    const response = await fetch(`/api/invites/${id}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!response.ok) {
+      toast.error(t('inviteDeleteError'))
+      return
+    }
+
+    clearClientGetCache('/api/users')
+    setInvites((current) => current.filter((invite) => invite.id !== id))
+    toast.success(t('inviteDeleted'))
   }
 
   const handleUpdateUser = async (event: React.FormEvent) => {
@@ -548,7 +571,18 @@ export default function TeachersPage() {
                 <div key={invite.id} className="space-y-2 border-b py-3 text-sm">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>{invite.name} · {invite.email}</span>
-                    <span className="text-gray-600">{invite.schoolName} · {t(`roles.${invite.role}`)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-600">{invite.schoolName} · {t(`roles.${invite.role}`)}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        onClick={() => setPendingDeleteInvite(invite)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </div>
                   {invite.inviteLink ? (
                     <div className="flex flex-col gap-2 sm:flex-row">
@@ -556,6 +590,17 @@ export default function TeachersPage() {
                       <Button type="button" variant="outline" onClick={() => copyInviteLink(invite.inviteLink || '')}>
                         <Copy className="size-4" />
                         {t('copyInvite')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="border-green-200 bg-green-50 text-green-700 hover:bg-green-100 hover:text-green-800"
+                        onClick={() => {
+                          const message = encodeURIComponent(`Olá! Você foi convidado para acessar o Alfabetiza na escola ${invite.schoolName}. Acesse o link para criar sua senha: ${invite.inviteLink}`)
+                          window.open(`https://wa.me/?text=${message}`, '_blank')
+                        }}
+                      >
+                        WhatsApp
                       </Button>
                     </div>
                   ) : (
@@ -577,6 +622,21 @@ export default function TeachersPage() {
           <AlertDialogFooter>
             <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleUnassign} className="bg-red-600 hover:bg-red-700">
+              {tCommon('delete')}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={!!pendingDeleteInvite} onOpenChange={(open) => !open && setPendingDeleteInvite(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{tCommon('confirmDelete')}</AlertDialogTitle>
+            <AlertDialogDescription>{tCommon('deleteWarning')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{tCommon('cancel')}</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteInvite} className="bg-red-600 hover:bg-red-700">
               {tCommon('delete')}
             </AlertDialogAction>
           </AlertDialogFooter>

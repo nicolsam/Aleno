@@ -27,15 +27,15 @@
     "language": "Idioma",
     "roles": {
       "TEACHER": "Professor",
-      "COORDINATOR": "Coordenador Acadêmico"
+      "COORDINATOR": "Coordenador Pedagógico"
     },
     "rolesMale": {
       "TEACHER": "Professor",
-      "COORDINATOR": "Coordenador Acadêmico"
+      "COORDINATOR": "Coordenador Pedagógico"
     },
     "rolesFemale": {
       "TEACHER": "Professora",
-      "COORDINATOR": "Coordenadora Acadêmica"
+      "COORDINATOR": "Coordenadora Pedagógica"
     }
   },
   "students": {
@@ -239,8 +239,10 @@
     "copied": "Link do convite copiado",
     "roles": {
       "TEACHER": "Professor",
-      "COORDINATOR": "Coordenador Acadêmico"
-    }
+      "COORDINATOR": "Coordenador Pedagógico"
+    },
+    "inviteDeleted": "Convite excluído",
+    "inviteDeleteError": "Falha ao excluir convite"
   },
   "invite": {
     "title": "Aceitar convite",

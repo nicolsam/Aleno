@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import { hashPassword } from '@/lib/auth'
 import { hashInviteToken, isInviteExpired } from '@/lib/invites'
-import { USER_SCHOOL_ROLES } from '@/lib/permissions'
+import { USER_SCHOOL_ROLES, requireAuth, isAuthFailure, isCoordinatorForSchool } from '@/lib/permissions'
 import { normalizeGender } from '@/lib/user-profile'
 
 async function findInvite(token: string) {
@@ -90,6 +90,41 @@ export async function POST(request: Request, { params }: { params: Promise<{ tok
     return NextResponse.json({ user: { id: user.id, name: user.name, email: user.email } })
   } catch (error) {
     console.error('Invite POST error:', error)
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: Request, { params }: { params: Promise<{ token: string }> }) {
+  try {
+    const auth = await requireAuth(request)
+    if (isAuthFailure(auth)) return auth.error
+    
+    const { user } = auth
+
+    const { token: id } = await params
+    const invite = await prisma.userInvite.findUnique({
+      where: { id },
+    })
+
+    if (!invite) {
+      return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    }
+
+    if (!user.isGlobalAdmin && !isCoordinatorForSchool(user, invite.schoolId)) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+
+    if (invite.acceptedAt) {
+      return NextResponse.json({ error: 'Invite already accepted' }, { status: 400 })
+    }
+
+    await prisma.userInvite.delete({
+      where: { id },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('DELETE /api/invites/[token] error:', error)
     return NextResponse.json({ error: 'Internal error' }, { status: 500 })
   }
 }
