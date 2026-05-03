@@ -16,9 +16,11 @@ describe('generated Prisma client', () => {
       UserSchool: 'UserSchool',
       UserInvite: 'UserInvite',
       Student: 'Student',
+      StudentContact: 'StudentContact',
       StudentEnrollment: 'StudentEnrollment',
       ReadingLevel: 'ReadingLevel',
       StudentReadingHistory: 'StudentReadingHistory',
+      StudentParentReportLink: 'StudentParentReportLink',
     })
   })
 

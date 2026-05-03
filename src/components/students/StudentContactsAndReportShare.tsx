@@ -1,0 +1,306 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { Copy, MessageCircle, Phone, Plus, Star, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { useTranslations } from 'next-intl'
+import { buildWhatsappShareUrl } from '@/lib/whatsapp'
+
+type StudentContact = {
+  id: string
+  name: string
+  relationship: string | null
+  phone: string
+  whatsappPhone: string
+  isPrimary: boolean
+}
+
+type ReportLinkResponse = {
+  reportLink: { id: string; expiresAt: string; url: string }
+  shareText: string
+}
+
+type ContactForm = {
+  name: string
+  relationship: string
+  phone: string
+  isPrimary: boolean
+}
+
+type Props = {
+  studentId: string
+  studentName: string
+  schoolName: string
+}
+
+const emptyContactForm: ContactForm = {
+  name: '',
+  relationship: '',
+  phone: '',
+  isPrimary: false,
+}
+
+export default function StudentContactsAndReportShare({ studentId }: Props) {
+  const t = useTranslations('students')
+  const tCommon = useTranslations('common')
+  const [contacts, setContacts] = useState<StudentContact[]>([])
+  const [contactForm, setContactForm] = useState<ContactForm>(emptyContactForm)
+  const [selectedContactId, setSelectedContactId] = useState('')
+  const [report, setReport] = useState<ReportLinkResponse | null>(null)
+  const [loadingContacts, setLoadingContacts] = useState(true)
+  const [savingContact, setSavingContact] = useState(false)
+  const [generatingReport, setGeneratingReport] = useState(false)
+
+  useEffect(() => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const fetchContacts = async () => {
+      const res = await fetch(`/api/students/${studentId}/contacts`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (res.ok) {
+        const data = await res.json() as { contacts: StudentContact[] }
+        setContacts(data.contacts)
+        setSelectedContactId(data.contacts.find((contact) => contact.isPrimary)?.id || '')
+      }
+      setLoadingContacts(false)
+    }
+
+    fetchContacts()
+  }, [studentId])
+
+  const selectedContact = contacts.find((contact) => contact.id === selectedContactId) || null
+
+  const createContact = async (event: React.FormEvent) => {
+    event.preventDefault()
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    setSavingContact(true)
+    const res = await fetch(`/api/students/${studentId}/contacts`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(contactForm),
+    })
+    setSavingContact(false)
+
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({})) as { error?: string }
+      toast.error(data.error || t('contactError'))
+      return
+    }
+
+    const data = await res.json() as { contact: StudentContact }
+    const nextContacts = data.contact.isPrimary
+      ? contacts.map((contact) => ({ ...contact, isPrimary: false }))
+      : contacts
+    setContacts([...nextContacts, data.contact].sort(sortContacts))
+    setSelectedContactId(data.contact.id)
+    setContactForm(emptyContactForm)
+    toast.success(t('contactCreated'))
+  }
+
+  const deleteContact = async (contactId: string) => {
+    const token = localStorage.getItem('token')
+    if (!token) return
+
+    const res = await fetch(`/api/students/${studentId}/contacts/${contactId}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    if (!res.ok) {
+      toast.error(t('contactError'))
+      return
+    }
+
+    const nextContacts = contacts.filter((contact) => contact.id !== contactId)
+    setContacts(nextContacts)
+    if (selectedContactId === contactId) setSelectedContactId(nextContacts[0]?.id || '')
+    toast.success(t('contactDeleted'))
+  }
+
+  const generateReport = async () => {
+    const token = localStorage.getItem('token')
+    if (!token) return null
+
+    setGeneratingReport(true)
+    const res = await fetch(`/api/students/${studentId}/report-link`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    setGeneratingReport(false)
+
+    if (!res.ok) {
+      toast.error(t('reportError'))
+      return null
+    }
+
+    const data = await res.json() as ReportLinkResponse
+    setReport(data)
+    toast.success(t('reportLinkReady'))
+    return data
+  }
+
+  const copyReportLink = async () => {
+    const currentReport = report || await generateReport()
+    if (!currentReport) return
+    await navigator.clipboard.writeText(currentReport.reportLink.url)
+    toast.success(t('copiedReportLink'))
+  }
+
+  const openWhatsapp = async () => {
+    const currentReport = report || await generateReport()
+    if (!currentReport) return
+    const url = buildWhatsappShareUrl(currentReport.shareText, selectedContact?.whatsappPhone)
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <section className="mb-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
+      <div className="rounded-lg bg-white p-6 shadow">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Phone className="size-5 text-blue-600" />
+            <h2 className="text-lg font-semibold text-gray-800">{t('parentContacts')}</h2>
+          </div>
+          {loadingContacts && <span className="text-sm text-gray-500">{tCommon('loading')}</span>}
+        </div>
+
+        {contacts.length === 0 && !loadingContacts ? (
+          <p className="mb-4 rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+            {t('noContacts')}
+          </p>
+        ) : (
+          <div className="mb-4 space-y-2">
+            {contacts.map((contact) => (
+              <div key={contact.id} className="flex items-center justify-between gap-3 rounded-md border border-gray-200 p-3">
+                <div className="min-w-0">
+                  <p className="flex items-center gap-2 truncate font-medium text-gray-900">
+                    {contact.name}
+                    {contact.isPrimary && <Star className="size-4 fill-amber-400 text-amber-400" />}
+                  </p>
+                  <p className="truncate text-sm text-gray-500">
+                    {[contact.relationship, contact.phone].filter(Boolean).join(' - ')}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => deleteContact(contact.id)}
+                  className="rounded p-2 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                  aria-label={tCommon('delete')}
+                >
+                  <Trash2 className="size-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form onSubmit={createContact} className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <input
+              value={contactForm.name}
+              onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })}
+              placeholder={t('contactName')}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+              required
+            />
+            <input
+              value={contactForm.relationship}
+              onChange={(event) => setContactForm({ ...contactForm, relationship: event.target.value })}
+              placeholder={t('relationship')}
+              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+            />
+          </div>
+          <input
+            value={contactForm.phone}
+            onChange={(event) => setContactForm({ ...contactForm, phone: event.target.value })}
+            placeholder={t('contactPhone')}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={contactForm.isPrimary}
+              onChange={(event) => setContactForm({ ...contactForm, isPrimary: event.target.checked })}
+            />
+            {t('primaryContact')}
+          </label>
+          <button
+            type="submit"
+            disabled={savingContact}
+            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+          >
+            <Plus className="size-4" />
+            {savingContact ? tCommon('loading') : t('addContact')}
+          </button>
+        </form>
+      </div>
+
+      <div className="rounded-lg bg-white p-6 shadow">
+        <div className="mb-4 flex items-center gap-2">
+          <MessageCircle className="size-5 text-green-600" />
+          <h2 className="text-lg font-semibold text-gray-800">{t('reportSharing')}</h2>
+        </div>
+
+        <div className="space-y-3">
+          <select
+            value={selectedContactId}
+            onChange={(event) => setSelectedContactId(event.target.value)}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">{t('genericWhatsapp')}</option>
+            {contacts.map((contact) => (
+              <option key={contact.id} value={contact.id}>
+                {contact.name} - {contact.phone}
+              </option>
+            ))}
+          </select>
+
+          {report && (
+            <p className="break-all rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
+              {report.reportLink.url}
+            </p>
+          )}
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={generateReport}
+              disabled={generatingReport}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              <Plus className="size-4" />
+              {generatingReport ? tCommon('loading') : t('generateReportLink')}
+            </button>
+            <button
+              type="button"
+              onClick={copyReportLink}
+              className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Copy className="size-4" />
+              {t('copyReportLink')}
+            </button>
+            <button
+              type="button"
+              onClick={openWhatsapp}
+              className="inline-flex items-center gap-2 rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            >
+              <MessageCircle className="size-4" />
+              {t('shareOnWhatsapp')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function sortContacts(first: StudentContact, second: StudentContact): number {
+  if (first.isPrimary !== second.isPrimary) return first.isPrimary ? -1 : 1
+  return first.name.localeCompare(second.name)
+}

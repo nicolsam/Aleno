@@ -10,6 +10,7 @@ import { getReadingLevelStyle } from '@/lib/reading-levels'
 import { getDefaultAssessmentDateForMonth, getMonthKey } from '@/lib/monthly-updates'
 import StudentProfileSkeleton from '@/components/skeletons/StudentProfileSkeleton'
 import { cachedJson, clearClientGetCache } from '@/lib/client-get-cache'
+import StudentContactsAndReportShare from '@/components/students/StudentContactsAndReportShare'
 
 const StudentProgressChart = dynamic(() => import('@/components/dashboard/StudentProgressChart'), {
   loading: () => <div className="h-[280px] animate-pulse rounded bg-gray-50" />,
@@ -238,6 +239,12 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
+
+      <StudentContactsAndReportShare
+        studentId={student.id}
+        studentName={student.name}
+        schoolName={student.school.name}
+      />
 
       {/* Progress Chart */}
       {chartData.length > 0 && (
