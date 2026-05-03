@@ -11,7 +11,7 @@ export async function PATCH(request: Request) {
     if (isAuthFailure(auth)) return auth.error
 
     const body = await request.json()
-    const { studentId, readingLevelId, notes, recordedAt } = body
+    const { studentId, readingLevelId, recordedAt } = body
 
     if (!studentId || !readingLevelId) {
       return NextResponse.json({ 
@@ -60,7 +60,6 @@ export async function PATCH(request: Request) {
         readingLevelId,
         userId: auth.user.id,
         recordedAt: assessmentDate,
-        notes,
       },
     })
 

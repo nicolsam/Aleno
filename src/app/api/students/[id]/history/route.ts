@@ -33,9 +33,21 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
       },
     })
 
+    const commentaries = await prisma.studentCommentary.findMany({
+      where: { studentId: id },
+      orderBy: [
+        { recordedAt: 'desc' },
+        { createdAt: 'desc' },
+      ],
+      include: {
+        user: { select: { name: true } },
+      },
+    })
+
     return NextResponse.json({
       student,
       history: history.map((entry) => ({ ...entry, teacher: entry.user })),
+      commentaries: commentaries.map((entry: any) => ({ ...entry, teacher: entry.user })),
     })
   } catch (error) {
     console.error('Student history error:', error)

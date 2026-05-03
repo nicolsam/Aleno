@@ -62,6 +62,7 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
   const [loadingContacts, setLoadingContacts] = useState(true)
   const [savingContact, setSavingContact] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
+  const [showContactModal, setShowContactModal] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -114,6 +115,7 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
     setContacts([...nextContacts, data.contact].sort(sortContacts))
     setSelectedContactId(data.contact.id)
     setContactForm(emptyContactForm)
+    setShowContactModal(false)
     toast.success(t('contactCreated'))
   }
 
@@ -174,14 +176,23 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
   }
 
   return (
-    <section className="mb-6 grid gap-6 lg:grid-cols-[1fr_1fr]">
+    <section className="mb-6 grid gap-6">
       <div className="rounded-lg bg-white p-6 shadow">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <Phone className="size-5 text-blue-600" />
             <h2 className="text-lg font-semibold text-gray-800">{t('parentContacts')}</h2>
           </div>
-          {loadingContacts && <span className="text-sm text-gray-500">{tCommon('loading')}</span>}
+          <div className="flex items-center gap-3">
+            {loadingContacts && <span className="text-sm text-gray-500">{tCommon('loading')}</span>}
+            <button
+              onClick={() => setShowContactModal(true)}
+              className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+            >
+              <Plus className="size-4" />
+              {t('addContact')}
+            </button>
+          </div>
         </div>
 
         {contacts.length === 0 && !loadingContacts ? (
@@ -213,62 +224,77 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
             ))}
           </div>
         )}
-
-        <form onSubmit={createContact} className="space-y-3">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <input
-              value={contactForm.name}
-              onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })}
-              placeholder={t('contactName')}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-              required
-            />
-            <Select
-              value={contactForm.relationship}
-              onValueChange={(relationship) => setContactForm({
-                ...contactForm,
-                relationship: relationship as StudentContactRelationship,
-              })}
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t('relationship')} />
-              </SelectTrigger>
-              <SelectContent>
-                {STUDENT_CONTACT_RELATIONSHIPS.map((relationship) => (
-                  <SelectItem key={relationship} value={relationship}>
-                    {t(`relationships.${relationship}`)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <input
-            type="tel"
-            inputMode="numeric"
-            value={contactForm.phone}
-            onChange={(event) => setContactForm({ ...contactForm, phone: formatBrazilPhoneInput(event.target.value) })}
-            placeholder={t('contactPhonePlaceholder')}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-            required
-          />
-          <label className="flex items-center gap-2 text-sm text-gray-700">
-            <input
-              type="checkbox"
-              checked={contactForm.isPrimary}
-              onChange={(event) => setContactForm({ ...contactForm, isPrimary: event.target.checked })}
-            />
-            {t('primaryContact')}
-          </label>
-          <button
-            type="submit"
-            disabled={savingContact}
-            className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
-          >
-            <Plus className="size-4" />
-            {savingContact ? tCommon('loading') : t('addContact')}
-          </button>
-        </form>
       </div>
+
+      {showContactModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="w-96 rounded-lg bg-white p-6 shadow-xl">
+            <h2 className="mb-4 text-xl font-bold text-gray-800">{t('addContact')}</h2>
+            <form onSubmit={createContact} className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  value={contactForm.name}
+                  onChange={(event) => setContactForm({ ...contactForm, name: event.target.value })}
+                  placeholder={t('contactName')}
+                  className="rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  required
+                />
+                <Select
+                  value={contactForm.relationship}
+                  onValueChange={(relationship) => setContactForm({
+                    ...contactForm,
+                    relationship: relationship as StudentContactRelationship,
+                  })}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder={t('relationship')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STUDENT_CONTACT_RELATIONSHIPS.map((relationship) => (
+                      <SelectItem key={relationship} value={relationship}>
+                        {t(`relationships.${relationship}`)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <input
+                type="tel"
+                inputMode="numeric"
+                value={contactForm.phone}
+                onChange={(event) => setContactForm({ ...contactForm, phone: formatBrazilPhoneInput(event.target.value) })}
+                placeholder={t('contactPhonePlaceholder')}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                required
+              />
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={contactForm.isPrimary}
+                  onChange={(event) => setContactForm({ ...contactForm, isPrimary: event.target.checked })}
+                />
+                {t('primaryContact')}
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={savingContact}
+                  className="flex-1 rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {savingContact ? tCommon('loading') : tCommon('save')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowContactModal(false)}
+                  className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  {tCommon('cancel')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       <div className="rounded-lg bg-white p-6 shadow">
         <div className="mb-4 flex items-center gap-2">

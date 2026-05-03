@@ -1,3 +1,5 @@
+#!/bin/bash
+cat << 'INNEREOF' > src/app/dashboard/students/\[id\]/page.tsx.new
 'use client'
 
 import { useEffect, useState } from 'react'
@@ -101,7 +103,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     const fetchData = async () => {
       const [historyRes, levelsRes] = await Promise.all([
         cachedJson<{ student: StudentDetail; history: HistoryEntry[]; commentaries: CommentaryEntry[] }>(`/api/students/${studentId}/history`, {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: \`Bearer \${token}\` },
         }),
         cachedJson<ReadingLevel[]>('/api/levels'),
       ])
@@ -130,7 +132,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     if (!token) return
     clearClientGetCache(`/api/students/${studentId}/history`)
     const historyRes = await cachedJson<{ student: StudentDetail; history: HistoryEntry[]; commentaries: CommentaryEntry[] }>(`/api/students/${studentId}/history`, {
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: \`Bearer \${token}\` },
     }, { force: true })
     if (historyRes.ok) {
       setStudent(historyRes.data.student)
@@ -150,7 +152,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
     const res = await fetch('/api/students/update', {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: \`Bearer \${token}\`, 'Content-Type': 'application/json' },
       body: JSON.stringify({ studentId, ...updateLevel }),
     })
 
@@ -171,7 +173,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
     const res = await fetch(`/api/students/${studentId}/commentaries`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: \`Bearer \${token}\`, 'Content-Type': 'application/json' },
       body: JSON.stringify(commentaryData),
     })
 
@@ -197,7 +199,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
     const res = await fetch(endpoint, {
       method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: { Authorization: \`Bearer \${token}\` },
     })
 
     if (res.ok) {
@@ -207,7 +209,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
 
   const formatClassName = (c?: ClassRecord) => {
     if (!c) return 'N/A'
-    return `${c.grade} ${c.section} (${tClasses(`shifts.${c.shift}`)}) - ${c.academicYear}`
+    return `${c.grade} ${c.section} (${tClasses(\`shifts.\${c.shift}\`)}) - ${c.academicYear}`
   }
 
   const formatDate = (dateStr: string) => {
@@ -240,7 +242,7 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
   }
 
   return (
-    <div className="w-full">
+    <div className="max-w-4xl mx-auto">
       <Link
         href="/dashboard/students"
         className="inline-flex items-center gap-2 text-gray-600 hover:text-blue-600 mb-6 text-sm"
@@ -472,3 +474,5 @@ export default function StudentDetailPage({ params }: { params: Promise<{ id: st
     </div>
   )
 }
+INNEREOF
+mv src/app/dashboard/students/\[id\]/page.tsx.new src/app/dashboard/students/\[id\]/page.tsx
