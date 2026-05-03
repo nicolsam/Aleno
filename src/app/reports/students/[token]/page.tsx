@@ -1,8 +1,10 @@
 import { getTranslations, getLocale } from 'next-intl/server'
 import { connection } from 'next/server'
-import { BookOpen, CalendarDays, School, UserRound } from 'lucide-react'
+import { BookOpen, CalendarDays, School, TrendingUp, UserRound } from 'lucide-react'
 import { getStudentParentReportByToken } from '@/lib/student-parent-reports'
 import { getReadingLevelStyle } from '@/lib/reading-levels'
+import { buildReadingLevelAxisLabels, buildStudentProgressChartData } from '@/lib/student-progress-chart'
+import StudentProgressChart from '@/components/dashboard/StudentProgressChart'
 
 type ReportPageProps = {
   params: Promise<{ token: string }>
@@ -47,6 +49,8 @@ export default async function StudentParentReportPage({ params }: ReportPageProp
   const currentLevel = report.history[0]?.readingLevel
   const currentLevelStyle = getReadingLevelStyle(currentLevel?.code)
   const shiftLabel = tClasses(`shifts.${report.student.class.shift}`)
+  const chartData = buildStudentProgressChartData(report.history, locale, tLevels)
+  const levelLabels = buildReadingLevelAxisLabels(tLevels)
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-8">
@@ -83,6 +87,16 @@ export default async function StudentParentReportPage({ params }: ReportPageProp
             </div>
           </div>
         </header>
+
+        {chartData.length > 0 && (
+          <section className="border-b border-gray-200 p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <TrendingUp className="size-5 text-blue-600" />
+              <h2 className="text-xl font-semibold text-gray-900">{t('progressChart')}</h2>
+            </div>
+            <StudentProgressChart data={chartData} levelLabels={levelLabels} />
+          </section>
+        )}
 
         <section className="p-6">
           <div className="mb-5 flex items-center gap-2">

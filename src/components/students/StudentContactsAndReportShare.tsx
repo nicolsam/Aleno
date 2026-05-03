@@ -5,6 +5,14 @@ import { Copy, MessageCircle, Phone, Plus, Star, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 import { buildWhatsappShareUrl } from '@/lib/whatsapp'
+import { STUDENT_CONTACT_RELATIONSHIPS, type StudentContactRelationship } from '@/lib/student-contacts'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 
 type StudentContact = {
   id: string
@@ -22,7 +30,7 @@ type ReportLinkResponse = {
 
 type ContactForm = {
   name: string
-  relationship: string
+  relationship: '' | StudentContactRelationship
   phone: string
   isPrimary: boolean
 }
@@ -72,6 +80,9 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
   }, [studentId])
 
   const selectedContact = contacts.find((contact) => contact.id === selectedContactId) || null
+  const getRelationshipLabel = (relationship: string | null) => (
+    relationship ? t(`relationships.${relationship}`) : ''
+  )
 
   const createContact = async (event: React.FormEvent) => {
     event.preventDefault()
@@ -183,7 +194,7 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
                     {contact.isPrimary && <Star className="size-4 fill-amber-400 text-amber-400" />}
                   </p>
                   <p className="truncate text-sm text-gray-500">
-                    {[contact.relationship, contact.phone].filter(Boolean).join(' - ')}
+                    {[getRelationshipLabel(contact.relationship), contact.phone].filter(Boolean).join(' - ')}
                   </p>
                 </div>
                 <button
@@ -208,12 +219,24 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
               className="rounded-md border border-gray-300 px-3 py-2 text-sm"
               required
             />
-            <input
+            <Select
               value={contactForm.relationship}
-              onChange={(event) => setContactForm({ ...contactForm, relationship: event.target.value })}
-              placeholder={t('relationship')}
-              className="rounded-md border border-gray-300 px-3 py-2 text-sm"
-            />
+              onValueChange={(relationship) => setContactForm({
+                ...contactForm,
+                relationship: relationship as StudentContactRelationship,
+              })}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder={t('relationship')} />
+              </SelectTrigger>
+              <SelectContent>
+                {STUDENT_CONTACT_RELATIONSHIPS.map((relationship) => (
+                  <SelectItem key={relationship} value={relationship}>
+                    {t(`relationships.${relationship}`)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <input
             value={contactForm.phone}

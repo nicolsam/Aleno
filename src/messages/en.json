@@ -7,6 +7,8 @@
     "edit": "Edit",
     "delete": "Delete",
     "undo": "Undo",
+    "back": "Back",
+    "next": "Next",
     "confirmDelete": "Are you sure you want to delete this?",
     "deleteWarning": "This action cannot be undone.",
     "searchPlaceholder": "Search",
@@ -79,6 +81,16 @@
     "noContacts": "No parent contacts saved yet.",
     "contactName": "Contact name",
     "relationship": "Relationship",
+    "relationships": {
+      "MOTHER": "Mother",
+      "FATHER": "Father",
+      "GRANDMOTHER": "Grandmother",
+      "GRANDFATHER": "Grandfather",
+      "AUNT": "Aunt",
+      "UNCLE": "Uncle",
+      "GUARDIAN": "Guardian",
+      "OTHER": "Other"
+    },
     "contactPhone": "WhatsApp phone",
     "primaryContact": "Primary contact",
     "addContact": "Add contact",
@@ -92,7 +104,11 @@
     "shareOnWhatsapp": "Share on WhatsApp",
     "reportLinkReady": "Report link ready",
     "copiedReportLink": "Report link copied",
-    "reportError": "Failed to create report link"
+    "reportError": "Failed to create report link",
+    "registrationStep": "Step {step} of {total}",
+    "contactsOptional": "Parent contacts are optional. Add one or more contacts, or continue without contacts.",
+    "missingStudentFields": "Select a class and fill in the student name and number.",
+    "missingContactFields": "Fill in the contact name, relationship, and WhatsApp phone."
   },
   "reports": {
     "eyebrow": "Student Reading Report",
@@ -100,6 +116,7 @@
     "unavailableDescription": "This report link is invalid, expired, revoked, or no longer available.",
     "notAssessed": "Not assessed",
     "expiresAt": "Available until {date}",
+    "progressChart": "Progress Chart",
     "historyTitle": "Reading History",
     "noHistory": "No assessments have been recorded yet.",
     "recordedBy": "Recorded by",

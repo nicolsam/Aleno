@@ -7,8 +7,21 @@ const SCHOOL_ID = 'e2e-parent-report-school'
 const CLASS_ID = 'e2e-parent-report-class'
 const STUDENT_ID = 'e2e-parent-report-student'
 const ENROLLMENT_ID = 'e2e-parent-report-enrollment'
+const CREATED_STUDENT_NUMBER = 'E2E-REPORT-CREATED-001'
 
 async function cleanupFixtures() {
+  const createdStudents = await prisma.student.findMany({
+    where: { studentNumber: CREATED_STUDENT_NUMBER },
+    select: { id: true },
+  })
+  const createdStudentIds = createdStudents.map((student) => student.id)
+
+  if (createdStudentIds.length > 0) {
+    await prisma.studentContact.deleteMany({ where: { studentId: { in: createdStudentIds } } })
+    await prisma.studentEnrollment.deleteMany({ where: { studentId: { in: createdStudentIds } } })
+    await prisma.student.deleteMany({ where: { id: { in: createdStudentIds } } })
+  }
+
   await prisma.studentParentReportLink.deleteMany({ where: { studentId: STUDENT_ID } })
   await prisma.studentContact.deleteMany({ where: { studentId: STUDENT_ID } })
   await prisma.studentReadingHistory.deleteMany({ where: { studentId: STUDENT_ID } })
@@ -33,7 +46,7 @@ async function seedFixtures() {
     data: {
       id: SCHOOL_ID,
       name: 'E2E Parent Report School',
-      users: { create: { userId: teacher.id, role: 'TEACHER' } },
+      users: { create: { userId: teacher.id, role: 'COORDINATOR' } },
       classes: {
         create: {
           id: CLASS_ID,
@@ -92,7 +105,8 @@ test.describe('parent report sharing', () => {
 
     await expect(page.getByRole('heading', { name: 'E2E Parent Report Student' })).toBeVisible()
     await page.getByPlaceholder(/Nome do contato|Contact name/).fill('Maria Parent')
-    await page.getByPlaceholder(/Parentesco|Relationship/).fill('Mother')
+    await page.getByText(/Parentesco|Relationship/).click()
+    await page.getByRole('option', { name: /Mãe|Mother/ }).click()
     await page.getByPlaceholder(/WhatsApp/).fill('(85) 99999-0000')
     await page.getByRole('button', { name: /Adicionar contato|Add contact/ }).click()
     await expect(page.locator('p').filter({ hasText: 'Maria Parent' })).toBeVisible()
@@ -110,6 +124,42 @@ test.describe('parent report sharing', () => {
     const reportPath = new URL(reportLink || '').pathname
     await page.goto(reportPath)
     await expect(page.getByRole('heading', { name: 'E2E Parent Report Student' })).toBeVisible()
-    await expect(page.getByText('E2E report note')).toBeVisible()
+    await expect(page.getByRole('heading', { name: /Gráfico de Progresso|Progress Chart/ })).toBeVisible()
+    await expect(page.getByText('E2E report note', { exact: true }).last()).toBeVisible()
+  })
+
+  test('creates a student with parent contacts from the multi-step modal', async ({ page }) => {
+    await loginByApi(page, TEACHER_EMAIL, 'playwright123', SCHOOL_ID)
+    await page.goto('/dashboard/students')
+
+    await page.getByRole('button', { name: /Adicionar Aluno|Add Student/ }).click()
+    await page.getByRole('combobox').filter({ hasText: /Selecionar uma turma|Select a class/ }).click()
+    await page.getByRole('option', { name: /1º Ano P/ }).click()
+    await page.getByPlaceholder(/Nome|Name/).fill('E2E Created With Contact')
+    await page.getByPlaceholder(/Número do Aluno|Student Number/).fill(CREATED_STUDENT_NUMBER)
+    await page.getByRole('button', { name: /^(Avançar|Next)$/ }).click()
+
+    await page.getByPlaceholder(/Nome do contato|Contact name/).fill('Created Parent')
+    await page.getByText(/Parentesco|Relationship/).click()
+    await page.getByRole('option', { name: /Mãe|Mother/ }).click()
+    await page.getByPlaceholder(/WhatsApp/).fill('(85) 98888-7777')
+    await page.getByRole('button', { name: /Adicionar contato|Add contact/ }).click()
+    await page.getByRole('button', { name: /^(Avançar|Next)$/ }).click()
+    await page.getByRole('button', { name: /Salvar|Save/ }).click()
+
+    await expect(page.getByRole('link', { name: 'E2E Created With Contact' })).toBeVisible()
+
+    const createdStudent = await prisma.student.findUnique({
+      where: { studentNumber_schoolId: { studentNumber: CREATED_STUDENT_NUMBER, schoolId: SCHOOL_ID } },
+      include: { contacts: true },
+    })
+    expect(createdStudent?.contacts).toMatchObject([
+      {
+        name: 'Created Parent',
+        relationship: 'MOTHER',
+        whatsappPhone: '5585988887777',
+        isPrimary: true,
+      },
+    ])
   })
 })

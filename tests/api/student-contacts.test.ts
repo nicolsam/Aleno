@@ -75,7 +75,7 @@ describe('student contacts API', () => {
 
     const res = await POST(request({
       name: 'Maria',
-      relationship: 'Mother',
+      relationship: 'MOTHER',
       phone: '(85) 99999-0000',
     }), { params: Promise.resolve({ id: 'student-1' }) })
     const data = await res.json()
@@ -86,7 +86,7 @@ describe('student contacts API', () => {
       data: {
         studentId: 'student-1',
         name: 'Maria',
-        relationship: 'Mother',
+        relationship: 'MOTHER',
         phone: '(85) 99999-0000',
         whatsappPhone: '5585999990000',
         isPrimary: true,
@@ -99,6 +99,7 @@ describe('student contacts API', () => {
 
     const res = await POST(request({
       name: 'Maria',
+      relationship: 'MOTHER',
       phone: '(85) 99999-0000',
     }), { params: Promise.resolve({ id: 'student-1' }) })
 
@@ -109,7 +110,7 @@ describe('student contacts API', () => {
   it('returns 400 for invalid phone numbers', async () => {
     mockAccess()
 
-    const res = await POST(request({ name: 'Maria', phone: '123' }), {
+    const res = await POST(request({ name: 'Maria', relationship: 'MOTHER', phone: '123' }), {
       params: Promise.resolve({ id: 'student-1' }),
     })
     const data = await res.json()

@@ -45,6 +45,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { canManageSchoolScopedRecords, getStoredUser, type StoredUser } from '@/lib/client-auth'
+import StudentRegistrationModal, {
+  type StudentRegistrationPayload,
+} from '@/components/students/StudentRegistrationModal'
 
 interface ClassRecord {
   id: string
@@ -164,7 +167,6 @@ export default function StudentsPage() {
     setSectionFilter(value === '__all__' ? '' : value)
   }
 
-  const [newStudent, setNewStudent] = useState({ name: '', studentNumber: '', classId: '' })
   const [updateLevel, setUpdateLevel] = useState({ studentId: '', readingLevelId: '', notes: '', recordedAt: getDefaultAssessmentDateForMonth(getMonthKey()) })
 
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
@@ -258,18 +260,16 @@ export default function StudentsPage() {
     })
   }, [fetchData])
 
-  const handleCreateStudent = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleCreateStudent = async (studentRegistration: StudentRegistrationPayload): Promise<string | null> => {
     const token = localStorage.getItem('token')
-    if (!token || !newStudent.classId) {
-      setError(tClasses('selectClass'))
-      return
+    if (!token || !studentRegistration.classId) {
+      return tClasses('selectClass')
     }
 
     const res = await fetch('/api/students', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(newStudent),
+      body: JSON.stringify(studentRegistration),
     })
 
     if (res.ok) {
@@ -285,11 +285,11 @@ export default function StudentsPage() {
         },
       ])
       setShowModal(false)
-      setNewStudent({ name: '', studentNumber: '', classId: '' })
       toast.success(tCommon('save'))
+      return null
     } else {
       const data = await res.json()
-      setError(data.error || tErrors('failedCreate'))
+      return data.error || tErrors('failedCreate')
     }
   }
 
@@ -713,52 +713,13 @@ export default function StudentsPage() {
         </table>
       </div>
 
-      {/* Add Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-6 rounded-lg w-96 shadow-xl">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">{t('add')}</h2>
-            <form onSubmit={handleCreateStudent} className="space-y-4">
-              <div className="space-y-1">
-                <Label>{tClasses('selectClass')}</Label>
-                <Select value={newStudent.classId} onValueChange={(value) => setNewStudent({ ...newStudent, classId: value })}>
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder={tClasses('selectClass')} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {classes.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {formatClassName(c)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Input
-                type="text"
-                placeholder={t('name')}
-                value={newStudent.name}
-                onChange={(e) => setNewStudent({ ...newStudent, name: e.target.value })}
-                required
-              />
-              <Input
-                type="text"
-                placeholder={t('studentNumber')}
-                value={newStudent.studentNumber}
-                onChange={(e) => setNewStudent({ ...newStudent, studentNumber: e.target.value })}
-                required
-              />
-              <div className="flex gap-2">
-                <Button type="submit" className="flex-1">
-                  {tCommon('add')}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowModal(false)} className="flex-1">
-                  {tCommon('cancel')}
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <StudentRegistrationModal
+          classes={classes}
+          formatClassName={formatClassName}
+          onCancel={() => setShowModal(false)}
+          onSubmit={handleCreateStudent}
+        />
       )}
 
       {/* Edit Modal */}

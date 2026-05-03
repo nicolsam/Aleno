@@ -2,6 +2,7 @@ import { vi } from 'vitest'
 
 // Mock Prisma Client
 export const mockPrisma = {
+  $transaction: vi.fn(),
   user: {
     findUnique: vi.fn(),
     create: vi.fn(),
@@ -44,6 +45,8 @@ export const mockPrisma = {
     findMany: vi.fn(),
   },
 }
+
+mockPrisma.$transaction.mockImplementation((callback: (transaction: typeof mockPrisma) => unknown) => callback(mockPrisma))
 
 // Mock the db module
 vi.mock('@/lib/db', () => ({

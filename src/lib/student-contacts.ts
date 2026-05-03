@@ -1,5 +1,18 @@
 export const BRAZIL_COUNTRY_CODE = '55'
 
+export const STUDENT_CONTACT_RELATIONSHIPS = [
+  'MOTHER',
+  'FATHER',
+  'GRANDMOTHER',
+  'GRANDFATHER',
+  'AUNT',
+  'UNCLE',
+  'GUARDIAN',
+  'OTHER',
+] as const
+
+export type StudentContactRelationship = (typeof STUDENT_CONTACT_RELATIONSHIPS)[number]
+
 export type StudentContactInput = {
   name: unknown
   relationship?: unknown
@@ -9,10 +22,14 @@ export type StudentContactInput = {
 
 export type NormalizedStudentContactInput = {
   name: string
-  relationship: string | null
+  relationship: StudentContactRelationship
   phone: string
   whatsappPhone: string
   isPrimary: boolean
+}
+
+export function isStudentContactRelationship(value: unknown): value is StudentContactRelationship {
+  return typeof value === 'string' && STUDENT_CONTACT_RELATIONSHIPS.includes(value as StudentContactRelationship)
 }
 
 export function normalizeBrazilWhatsappPhone(phone: string): string {
@@ -37,9 +54,12 @@ export function normalizeStudentContactInput(input: StudentContactInput): Normal
     throw new Error(`Invalid contact phone "${String(input.phone)}". Expected a non-empty string.`)
   }
 
-  const relationship = typeof input.relationship === 'string' && input.relationship.trim()
-    ? input.relationship.trim()
-    : null
+  const relationship = typeof input.relationship === 'string' ? input.relationship.trim().toUpperCase() : ''
+  if (!isStudentContactRelationship(relationship)) {
+    throw new Error(
+      `Invalid contact relationship "${String(input.relationship)}". Expected one of: ${STUDENT_CONTACT_RELATIONSHIPS.join(', ')}.`
+    )
+  }
 
   return {
     name: input.name.trim(),
@@ -48,4 +68,20 @@ export function normalizeStudentContactInput(input: StudentContactInput): Normal
     whatsappPhone: normalizeBrazilWhatsappPhone(input.phone),
     isPrimary: input.isPrimary === true,
   }
+}
+
+export function normalizeStudentContactInputs(input: unknown): NormalizedStudentContactInput[] {
+  if (input === undefined || input === null) return []
+  if (!Array.isArray(input)) {
+    throw new Error(`Invalid contacts "${String(input)}". Expected an array of contact objects.`)
+  }
+
+  const contacts = input.map((contact) => normalizeStudentContactInput(contact as StudentContactInput))
+  const primaryIndex = contacts.findIndex((contact) => contact.isPrimary)
+  const fallbackPrimaryIndex = contacts.length > 0 ? Math.max(primaryIndex, 0) : -1
+
+  return contacts.map((contact, index) => ({
+    ...contact,
+    isPrimary: index === fallbackPrimaryIndex,
+  }))
 }

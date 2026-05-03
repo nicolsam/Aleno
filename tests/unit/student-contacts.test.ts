@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeBrazilWhatsappPhone, normalizeStudentContactInput } from '@/lib/student-contacts'
+import {
+  normalizeBrazilWhatsappPhone,
+  normalizeStudentContactInput,
+  normalizeStudentContactInputs,
+} from '@/lib/student-contacts'
 
 describe('student contacts', () => {
   it('normalizes Brazilian local phone numbers for WhatsApp', () => {
@@ -17,18 +21,36 @@ describe('student contacts', () => {
     )
   })
 
-  it('normalizes contact input with optional relationship', () => {
+  it('normalizes contact input with a fixed relationship value', () => {
     expect(normalizeStudentContactInput({
       name: '  Maria  ',
-      relationship: '  Mother  ',
+      relationship: '  mother  ',
       phone: '(85) 99999-0000',
       isPrimary: true,
     })).toEqual({
       name: 'Maria',
-      relationship: 'Mother',
+      relationship: 'MOTHER',
       phone: '(85) 99999-0000',
       whatsappPhone: '5585999990000',
       isPrimary: true,
     })
+  })
+
+  it('rejects unknown relationship values', () => {
+    expect(() => normalizeStudentContactInput({
+      name: 'Maria',
+      relationship: 'Neighbor',
+      phone: '(85) 99999-0000',
+    })).toThrow('Invalid contact relationship "Neighbor"')
+  })
+
+  it('makes the first contact primary when none is selected', () => {
+    expect(normalizeStudentContactInputs([
+      { name: 'Maria', relationship: 'MOTHER', phone: '(85) 99999-0000' },
+      { name: 'Jose', relationship: 'FATHER', phone: '(85) 3333-4444' },
+    ])).toMatchObject([
+      { name: 'Maria', isPrimary: true },
+      { name: 'Jose', isPrimary: false },
+    ])
   })
 })

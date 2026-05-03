@@ -7,6 +7,8 @@
     "edit": "Editar",
     "delete": "Excluir",
     "undo": "Desfazer",
+    "back": "Voltar",
+    "next": "Avançar",
     "confirmDelete": "Tem certeza que deseja excluir?",
     "deleteWarning": "Esta ação não pode ser desfeita.",
     "searchPlaceholder": "Buscar",
@@ -79,6 +81,16 @@
     "noContacts": "Nenhum contato de responsável salvo ainda.",
     "contactName": "Nome do contato",
     "relationship": "Parentesco",
+    "relationships": {
+      "MOTHER": "Mãe",
+      "FATHER": "Pai",
+      "GRANDMOTHER": "Avó",
+      "GRANDFATHER": "Avô",
+      "AUNT": "Tia",
+      "UNCLE": "Tio",
+      "GUARDIAN": "Responsável",
+      "OTHER": "Outro"
+    },
     "contactPhone": "WhatsApp",
     "primaryContact": "Contato principal",
     "addContact": "Adicionar contato",
@@ -92,7 +104,11 @@
     "shareOnWhatsapp": "Enviar no WhatsApp",
     "reportLinkReady": "Link do relatório pronto",
     "copiedReportLink": "Link do relatório copiado",
-    "reportError": "Falha ao criar link do relatório"
+    "reportError": "Falha ao criar link do relatório",
+    "registrationStep": "Etapa {step} de {total}",
+    "contactsOptional": "Os contatos dos responsáveis são opcionais. Adicione um ou mais contatos, ou continue sem contatos.",
+    "missingStudentFields": "Selecione uma turma e preencha o nome e o número do aluno.",
+    "missingContactFields": "Preencha o nome, parentesco e WhatsApp do contato."
   },
   "reports": {
     "eyebrow": "Relatório de Leitura do Aluno",
@@ -100,6 +116,7 @@
     "unavailableDescription": "Este link de relatório é inválido, expirou, foi revogado ou não está mais disponível.",
     "notAssessed": "Não avaliado",
     "expiresAt": "Disponível até {date}",
+    "progressChart": "Gráfico de Progresso",
     "historyTitle": "Histórico de Leitura",
     "noHistory": "Nenhuma avaliação foi registrada ainda.",
     "recordedBy": "Registrado por",
