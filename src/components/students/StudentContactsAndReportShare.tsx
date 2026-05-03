@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Copy, MessageCircle, Phone, Plus, Star, Trash2 } from 'lucide-react'
+import { Copy, Edit, MessageCircle, Phone, Plus, Star, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useTranslations } from 'next-intl'
 import { buildWhatsappShareUrl } from '@/lib/whatsapp'
@@ -63,6 +63,7 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
   const [savingContact, setSavingContact] = useState(false)
   const [generatingReport, setGeneratingReport] = useState(false)
   const [showContactModal, setShowContactModal] = useState(false)
+  const [editingContactId, setEditingContactId] = useState<string | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
@@ -89,14 +90,18 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
     relationship ? t(`relationships.${relationship}`) : ''
   )
 
-  const createContact = async (event: React.FormEvent) => {
+  const saveContact = async (event: React.FormEvent) => {
     event.preventDefault()
     const token = localStorage.getItem('token')
     if (!token) return
 
     setSavingContact(true)
-    const res = await fetch(`/api/students/${studentId}/contacts`, {
-      method: 'POST',
+    const url = editingContactId 
+      ? `/api/students/${studentId}/contacts/${editingContactId}`
+      : `/api/students/${studentId}/contacts`
+      
+    const res = await fetch(url, {
+      method: editingContactId ? 'PUT' : 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       body: JSON.stringify(contactForm),
     })
@@ -112,11 +117,32 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
     const nextContacts = data.contact.isPrimary
       ? contacts.map((contact) => ({ ...contact, isPrimary: false }))
       : contacts
-    setContacts([...nextContacts, data.contact].sort(sortContacts))
+      
+    const filteredContacts = nextContacts.filter(c => c.id !== data.contact.id)
+    setContacts([...filteredContacts, data.contact].sort(sortContacts))
+    
     setSelectedContactId(data.contact.id)
     setContactForm(emptyContactForm)
+    setEditingContactId(null)
     setShowContactModal(false)
     toast.success(t('contactCreated'))
+  }
+  
+  const openEditModal = (contact: StudentContact) => {
+    setContactForm({
+      name: contact.name,
+      relationship: (contact.relationship as StudentContactRelationship) || '',
+      phone: contact.phone,
+      isPrimary: contact.isPrimary,
+    })
+    setEditingContactId(contact.id)
+    setShowContactModal(true)
+  }
+  
+  const openAddModal = () => {
+    setContactForm(emptyContactForm)
+    setEditingContactId(null)
+    setShowContactModal(true)
   }
 
   const deleteContact = async (contactId: string) => {
@@ -186,7 +212,7 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
           <div className="flex items-center gap-3">
             {loadingContacts && <span className="text-sm text-gray-500">{tCommon('loading')}</span>}
             <button
-              onClick={() => setShowContactModal(true)}
+              onClick={openAddModal}
               className="inline-flex items-center gap-1 rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
             >
               <Plus className="size-4" />
@@ -212,14 +238,24 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
                     {[getRelationshipLabel(contact.relationship), contact.phone].filter(Boolean).join(' - ')}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => deleteContact(contact.id)}
-                  className="rounded p-2 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                  aria-label={tCommon('delete')}
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(contact)}
+                    className="rounded p-2 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                    aria-label={tCommon('edit')}
+                  >
+                    <Edit className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => deleteContact(contact.id)}
+                    className="rounded p-2 text-gray-500 hover:bg-red-50 hover:text-red-600"
+                    aria-label={tCommon('delete')}
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -229,8 +265,10 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
       {showContactModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="w-96 rounded-lg bg-white p-6 shadow-xl">
-            <h2 className="mb-4 text-xl font-bold text-gray-800">{t('addContact')}</h2>
-            <form onSubmit={createContact} className="space-y-4">
+            <h2 className="mb-4 text-xl font-bold text-gray-800">
+              {editingContactId ? tCommon('edit') : t('addContact')}
+            </h2>
+            <form onSubmit={saveContact} className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-2">
                 <input
                   value={contactForm.name}
@@ -317,9 +355,17 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
           </select>
 
           {report && (
-            <p className="break-all rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600">
-              {report.reportLink.url}
-            </p>
+            <div 
+              onClick={copyReportLink}
+              title={t('copyReportLink')}
+              className="group relative cursor-pointer break-all rounded-md border border-gray-200 bg-gray-50 p-3 text-sm text-gray-600 hover:bg-gray-100 transition-colors"
+            >
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex items-center gap-1.5 rounded-md bg-white border border-gray-200 px-2 py-1 text-gray-600 shadow-sm transition-opacity">
+                <Copy className="size-3.5" />
+                <span className="text-xs font-medium">{t('copyReportLink')}</span>
+              </div>
+              <p className="pr-24">{report.reportLink.url}</p>
+            </div>
           )}
 
           <div className="flex flex-wrap gap-2">
@@ -331,14 +377,6 @@ export default function StudentContactsAndReportShare({ studentId }: Props) {
             >
               <Plus className="size-4" />
               {generatingReport ? tCommon('loading') : t('generateReportLink')}
-            </button>
-            <button
-              type="button"
-              onClick={copyReportLink}
-              className="inline-flex items-center gap-2 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
-              <Copy className="size-4" />
-              {t('copyReportLink')}
             </button>
             <button
               type="button"
