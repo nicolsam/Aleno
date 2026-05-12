@@ -160,6 +160,7 @@ describe('API: /api/users', () => {
         id: 'coordinator-2',
         name: 'Coordinator',
         email: 'coordinator2@test.com',
+        gender: 'FEMALE',
         isGlobalAdmin: false,
         schools: [{
           schoolId: 'school-1',
@@ -175,6 +176,7 @@ describe('API: /api/users', () => {
 
     expect(response.status).toBe(200)
     expect(data.users).toHaveLength(1)
+    expect(data.users[0].gender).toBe('FEMALE')
     expect(data.users[0].schools[0].role).toBe('COORDINATOR')
     expect(mockFindUsers).toHaveBeenCalledWith(expect.objectContaining({
       where: expect.objectContaining({

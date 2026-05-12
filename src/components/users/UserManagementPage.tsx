@@ -40,6 +40,7 @@ type ManagedUser = {
   id: string
   name: string
   email: string
+  gender?: string | null
   schools: { schoolId: string; schoolName: string; role: string }[]
 }
 
@@ -103,6 +104,11 @@ export default function UserManagementPage({
   const [pendingDeleteInvite, setPendingDeleteInvite] = useState<PendingInvite | null>(null)
 
   const canManageUsers = canManage(user)
+  const getRoleLabel = (gender: string | null | undefined, userRole: string) => {
+    if (gender === 'FEMALE') return t(`rolesFemale.${userRole}`)
+    if (gender === 'MALE') return t(`rolesMale.${userRole}`)
+    return t(`roles.${userRole}`)
+  }
   const activeUserRows: ActiveUserRow[] = users.flatMap((managedUser) => (
     managedUser.schools.map((school) => ({ managedUser, school }))
   ))
@@ -110,7 +116,7 @@ export default function UserManagementPage({
     managedUser.name,
     managedUser.email,
     school.schoolName,
-    t(`roles.${school.role}`),
+    getRoleLabel(managedUser.gender, school.role),
   ])
   const filteredInvites = filterBySearchQuery(invites, searchQuery, (invite) => [
     invite.name,
@@ -533,7 +539,7 @@ export default function UserManagementPage({
                     <td className="p-4">{managedUser.name}</td>
                     <td className="p-4">{managedUser.email}</td>
                     <td className="p-4">{school.schoolName}</td>
-                    <td className="p-4">{t(`roles.${school.role}`)}</td>
+                    <td className="p-4">{getRoleLabel(managedUser.gender, school.role)}</td>
                     {canManageUsers && (
                       <td className="flex gap-1 p-4">
                         <Button

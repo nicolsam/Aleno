@@ -250,6 +250,14 @@
     "roles": {
       "TEACHER": "Teacher",
       "COORDINATOR": "Academic Coordinator"
+    },
+    "rolesMale": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
+    },
+    "rolesFemale": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
     }
   },
   "coordinators": {
@@ -295,6 +303,14 @@
     "inviteDeleted": "Invite deleted",
     "inviteDeleteError": "Failed to delete invite",
     "roles": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
+    },
+    "rolesMale": {
+      "TEACHER": "Teacher",
+      "COORDINATOR": "Academic Coordinator"
+    },
+    "rolesFemale": {
       "TEACHER": "Teacher",
       "COORDINATOR": "Academic Coordinator"
     }

@@ -64,7 +64,7 @@ async function seedCoordinatorFixtures() {
   await prisma.user.createMany({
     data: [
       { ...TEACHER, password },
-      { ...COORDINATOR, password },
+      { ...COORDINATOR, password, gender: 'FEMALE' },
       { ...OTHER_COORDINATOR, password },
     ],
   })
@@ -142,5 +142,13 @@ test.describe('coordinator management split', () => {
     await expect(page.getByText(OTHER_COORDINATOR_INVITE.name)).toBeHidden()
     await expect(page.getByTestId('coordinator-invite-button')).toBeHidden()
     await expect(page.getByRole('columnheader', { name: /Actions|Ações/ })).toBeHidden()
+  })
+
+  test('uses coordinator gender in Portuguese role labels', async ({ page }) => {
+    await loginFreshByApi(page, ADMIN_EMAIL)
+    await page.goto('/dashboard/coordinators')
+    await page.locator('button', { hasText: /^PT$/ }).click()
+
+    await expect(page.getByRole('row', { name: new RegExp(COORDINATOR.name) })).toContainText('Coordenadora Pedagógica')
   })
 })

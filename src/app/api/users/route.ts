@@ -34,6 +34,7 @@ function serializeUser(user: {
   id: string
   name: string
   email: string
+  gender?: string | null
   isGlobalAdmin: boolean
   schools: { schoolId: string; role: string; school: { id: string; name: string } }[]
 }) {
@@ -41,6 +42,7 @@ function serializeUser(user: {
     id: user.id,
     name: user.name,
     email: user.email,
+    gender: user.gender,
     isGlobalAdmin: user.isGlobalAdmin,
     schools: user.schools.map((school) => ({
       schoolId: school.schoolId,

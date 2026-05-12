@@ -251,6 +251,14 @@
       "TEACHER": "Professor",
       "COORDINATOR": "Coordenador Pedagógico"
     },
+    "rolesMale": {
+      "TEACHER": "Professor",
+      "COORDINATOR": "Coordenador Pedagógico"
+    },
+    "rolesFemale": {
+      "TEACHER": "Professora",
+      "COORDINATOR": "Coordenadora Pedagógica"
+    },
     "inviteDeleted": "Convite excluído",
     "inviteDeleteError": "Falha ao excluir convite"
   },
@@ -297,6 +305,14 @@
     "roles": {
       "TEACHER": "Professor",
       "COORDINATOR": "Coordenador Pedagógico"
+    },
+    "rolesMale": {
+      "TEACHER": "Professor",
+      "COORDINATOR": "Coordenador Pedagógico"
+    },
+    "rolesFemale": {
+      "TEACHER": "Professora",
+      "COORDINATOR": "Coordenadora Pedagógica"
     },
     "inviteDeleted": "Convite excluído",
     "inviteDeleteError": "Falha ao excluir convite"
