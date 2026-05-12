@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { Copy, Pencil, Search, Trash2, UserPlus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import { z } from 'zod'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -67,6 +68,11 @@ type ActiveUserRow = {
 type UserManagementRole = 'TEACHER' | 'COORDINATOR'
 type UserManagementMessages = 'teachers' | 'coordinators'
 type InviteModalStep = 'form' | 'link'
+type InviteForm = {
+  name: string
+  email: string
+}
+type InviteFormErrors = Partial<Record<keyof InviteForm | 'schoolId', string>>
 
 type UserManagementPageProps = {
   role: UserManagementRole
@@ -97,7 +103,8 @@ export default function UserManagementPage({
   const [inviteStep, setInviteStep] = useState<InviteModalStep>('form')
   const [showInviteModal, setShowInviteModal] = useState(false)
   const [createdInvite, setCreatedInvite] = useState<PendingInvite | null>(null)
-  const [form, setForm] = useState({ name: '', email: '' })
+  const [form, setForm] = useState<InviteForm>({ name: '', email: '' })
+  const [inviteFormErrors, setInviteFormErrors] = useState<InviteFormErrors>({})
   const [editingUser, setEditingUser] = useState<ManagedUser | null>(null)
   const [editForm, setEditForm] = useState({ name: '', email: '' })
   const [pendingUnassign, setPendingUnassign] = useState<PendingUnassign | null>(null)
@@ -135,6 +142,29 @@ export default function UserManagementPage({
     }
 
     return t(error ? errorMap[error] || 'inviteError' : 'inviteError')
+  }
+
+  const buildInviteSchema = () => z.object({
+    schoolId: z.string().trim().min(1, t('validation.schoolRequired')),
+    name: z.string().trim().min(1, t('validation.nameRequired')),
+    email: z.string().trim().min(1, t('validation.emailRequired')).email(t('validation.emailInvalid')),
+  })
+
+  const validateInviteForm = (): { name: string; email: string; schoolId: string } | null => {
+    const result = buildInviteSchema().safeParse({ ...form, schoolId })
+    if (result.success) {
+      setInviteFormErrors({})
+      return result.data
+    }
+
+    const fieldErrors: InviteFormErrors = {}
+    for (const issue of result.error.issues) {
+      const field = issue.path[0] as keyof InviteFormErrors | undefined
+      if (field && !fieldErrors[field]) fieldErrors[field] = issue.message
+    }
+    setInviteFormErrors(fieldErrors)
+    toast.error(result.error.issues[0]?.message || t('inviteError'))
+    return null
   }
 
   useEffect(() => {
@@ -189,6 +219,7 @@ export default function UserManagementPage({
     setInviteStep('form')
     setInviteLink('')
     setCreatedInvite(null)
+    setInviteFormErrors({})
     setShowInviteModal(true)
   }
 
@@ -198,6 +229,7 @@ export default function UserManagementPage({
     setInviteLink('')
     setCreatedInvite(null)
     setForm({ name: '', email: '' })
+    setInviteFormErrors({})
   }
 
   const inviteAnother = () => {
@@ -219,12 +251,13 @@ export default function UserManagementPage({
   const handleInvite = async (event: React.FormEvent) => {
     event.preventDefault()
     const token = localStorage.getItem('token')
-    if (!token || !schoolId) return
+    const validatedForm = validateInviteForm()
+    if (!token || !validatedForm) return
 
     const response = await fetch('/api/users', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, role, schoolId }),
+      body: JSON.stringify({ ...validatedForm, role }),
     })
     const data = await response.json()
 
@@ -383,7 +416,7 @@ export default function UserManagementPage({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
           <div className="w-full max-w-xl rounded-lg bg-white p-6 shadow-xl">
             {inviteStep === 'form' ? (
-              <form onSubmit={handleInvite} className="space-y-4">
+              <form onSubmit={handleInvite} className="space-y-4" noValidate>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-800">{t('inviteModalTitle')}</h2>
                   <p className="text-sm text-gray-600">{t('inviteModalDescription')}</p>
@@ -391,7 +424,13 @@ export default function UserManagementPage({
 
                 <div className="space-y-1">
                   <Label>{t('school')}</Label>
-                  <Select value={schoolId} onValueChange={setSchoolId}>
+                  <Select
+                    value={schoolId}
+                    onValueChange={(value) => {
+                      setSchoolId(value)
+                      setInviteFormErrors((current) => ({ ...current, schoolId: undefined }))
+                    }}
+                  >
                     <SelectTrigger className="!w-full">
                       <SelectValue placeholder={t('selectSchool')} />
                     </SelectTrigger>
@@ -403,15 +442,24 @@ export default function UserManagementPage({
                       ))}
                     </SelectContent>
                   </Select>
+                  {inviteFormErrors.schoolId && (
+                    <p className="text-sm text-red-600">{inviteFormErrors.schoolId}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
                   <Label>{t('name')}</Label>
                   <Input
                     value={form.name}
-                    onChange={(event) => setForm({ ...form, name: event.target.value })}
-                    required
+                    onChange={(event) => {
+                      setForm({ ...form, name: event.target.value })
+                      setInviteFormErrors((current) => ({ ...current, name: undefined }))
+                    }}
+                    aria-invalid={Boolean(inviteFormErrors.name)}
                   />
+                  {inviteFormErrors.name && (
+                    <p className="text-sm text-red-600">{inviteFormErrors.name}</p>
+                  )}
                 </div>
 
                 <div className="space-y-1">
@@ -419,9 +467,15 @@ export default function UserManagementPage({
                   <Input
                     type="email"
                     value={form.email}
-                    onChange={(event) => setForm({ ...form, email: event.target.value })}
-                    required
+                    onChange={(event) => {
+                      setForm({ ...form, email: event.target.value })
+                      setInviteFormErrors((current) => ({ ...current, email: undefined }))
+                    }}
+                    aria-invalid={Boolean(inviteFormErrors.email)}
                   />
+                  {inviteFormErrors.email && (
+                    <p className="text-sm text-red-600">{inviteFormErrors.email}</p>
+                  )}
                 </div>
 
                 <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">

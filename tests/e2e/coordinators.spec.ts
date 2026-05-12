@@ -151,4 +151,25 @@ test.describe('coordinator management split', () => {
 
     await expect(page.getByRole('row', { name: new RegExp(COORDINATOR.name) })).toContainText('Coordenadora Pedagógica')
   })
+
+  test('shows clear Portuguese validation messages in the coordinator invite modal', async ({ page }) => {
+    await loginFreshByApi(page, ADMIN_EMAIL)
+    await page.goto('/dashboard/coordinators')
+    await page.locator('button', { hasText: /^PT$/ }).click()
+    await page.getByTestId('coordinator-invite-button').click()
+    const inviteForm = page.locator('form')
+
+    await page.getByRole('button', { name: 'Criar convite' }).click()
+    await expect(inviteForm.getByText('Selecione uma escola antes de criar o convite do coordenador.')).toBeVisible()
+    await expect(inviteForm.getByText('Informe o nome completo do coordenador.')).toBeVisible()
+    await expect(inviteForm.getByText('Informe o e-mail do coordenador.')).toBeVisible()
+
+    await page.getByText('Selecionar escola').click()
+    await page.getByRole('option', { name: SCHOOL.name }).click()
+    await page.locator('form input').nth(0).fill('Coordenadora Valida')
+    await page.locator('form input').nth(1).fill('email-invalido')
+    await page.getByRole('button', { name: 'Criar convite' }).click()
+
+    await expect(inviteForm.getByText('Informe um e-mail válido para o coordenador, como coordenador@escola.com.')).toBeVisible()
+  })
 })

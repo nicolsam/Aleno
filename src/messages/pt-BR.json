@@ -259,6 +259,12 @@
       "TEACHER": "Professora",
       "COORDINATOR": "Coordenadora Pedagógica"
     },
+    "validation": {
+      "schoolRequired": "Selecione uma escola antes de criar o convite do professor.",
+      "nameRequired": "Informe o nome completo do professor.",
+      "emailRequired": "Informe o e-mail do professor.",
+      "emailInvalid": "Informe um e-mail válido para o professor, como professor@escola.com."
+    },
     "inviteDeleted": "Convite excluído",
     "inviteDeleteError": "Falha ao excluir convite"
   },
@@ -313,6 +319,12 @@
     "rolesFemale": {
       "TEACHER": "Professora",
       "COORDINATOR": "Coordenadora Pedagógica"
+    },
+    "validation": {
+      "schoolRequired": "Selecione uma escola antes de criar o convite do coordenador.",
+      "nameRequired": "Informe o nome completo do coordenador.",
+      "emailRequired": "Informe o e-mail do coordenador.",
+      "emailInvalid": "Informe um e-mail válido para o coordenador, como coordenador@escola.com."
     },
     "inviteDeleted": "Convite excluído",
     "inviteDeleteError": "Falha ao excluir convite"
